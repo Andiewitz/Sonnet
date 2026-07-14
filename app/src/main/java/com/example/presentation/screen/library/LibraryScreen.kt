@@ -85,6 +85,14 @@ fun LibraryScreen(
     }
 
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+
+    val allPlaylists = remember(tracks.size, playlists) {
+        listOf(
+            com.example.domain.model.Playlist(id = -1L, name = "All Songs", trackCount = tracks.size)
+        ) + playlists
+    }
+
     Scaffold(
         containerColor = BgPrimary,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp)
@@ -93,7 +101,7 @@ fun LibraryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+            contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
         ) {
             item {
                 Row(
@@ -128,23 +136,43 @@ fun LibraryScreen(
                 )
             }
 
-            if (tracks.isEmpty()) {
-                items(6) {
-                    TrackItemSkeleton()
-                    HorizontalDivider(
-                        color = BorderSubtle,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                }
-            } else {
-                itemsIndexed(tracks, key = { _, it -> it.id }) { index, track ->
-                    Column(modifier = Modifier.animateItem()) {
-                        TrackItem(track = track, onClick = { 
-                            viewModel.audioPlayer.setPlaylist(tracks, index)
-                        })
-                        HorizontalDivider(
-                            color = BorderSubtle,
-                            modifier = Modifier.padding(horizontal = 16.dp)
+            items(allPlaylists, key = { it.id }) { playlist ->
+                Row(
+                    modifier = Modifier
+                        .animateItem()
+                        .fillMaxWidth()
+                        .clickable {
+                            navController.navigate("playlist/${playlist.id}?name=${android.net.Uri.encode(playlist.name)}")
+                        }
+                        .padding(vertical = 12.dp, horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (playlist.id == -1L) AccentPrimary else BgTertiary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.LibraryMusic,
+                            contentDescription = null,
+                            tint = if (playlist.id == -1L) Color.Black else TextTertiary
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = playlist.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = TextPrimary,
+                            maxLines = 1
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${playlist.trackCount} tracks",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextSecondary
                         )
                     }
                 }

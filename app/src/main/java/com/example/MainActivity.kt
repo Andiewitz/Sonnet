@@ -129,6 +129,21 @@ class MainActivity : ComponentActivity() {
               composable("search") {
                 com.example.presentation.screen.search.SearchScreen(navController = navController)
               }
+              composable(
+                  route = "playlist/{playlistId}?name={name}",
+                  arguments = listOf(
+                      androidx.navigation.navArgument("playlistId") { type = androidx.navigation.NavType.LongType },
+                      androidx.navigation.navArgument("name") { type = androidx.navigation.NavType.StringType; defaultValue = "Playlist" }
+                  )
+              ) { backStackEntry ->
+                  val playlistId = backStackEntry.arguments?.getLong("playlistId") ?: -1L
+                  val name = backStackEntry.arguments?.getString("name") ?: "Playlist"
+                  com.example.presentation.screen.playlist.PlaylistDetailScreen(
+                      playlistId = playlistId,
+                      playlistName = name,
+                      navController = navController
+                  )
+              }
             }
             
             MainMiniPlayer(
@@ -153,6 +168,7 @@ fun MainMiniPlayer(
 ) {
     val currentTrack by audioPlayer.currentTrack.collectAsStateWithLifecycle()
     val isPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
+    val currentPosition by audioPlayer.currentPosition.collectAsStateWithLifecycle()
 
     androidx.compose.animation.AnimatedVisibility(
         visible = showMiniPlayer && currentTrack != null,
@@ -161,7 +177,6 @@ fun MainMiniPlayer(
         exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it }) + androidx.compose.animation.fadeOut()
     ) {
         currentTrack?.let { track ->
-            val currentPosition by audioPlayer.currentPosition.collectAsStateWithLifecycle()
             com.example.presentation.component.MiniPlayer(
                 track = track,
                 isPlaying = isPlaying,

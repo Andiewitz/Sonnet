@@ -106,7 +106,7 @@ fun HomeScreen(navController: NavController) {
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(playlists, key = { it.id }) { playlist ->
+                        items(playlists) { playlist ->
                             PlaylistCard(playlist, modifier = Modifier.animateItem())
                         }
                     }
@@ -133,7 +133,7 @@ fun HomeScreen(navController: NavController) {
                 }
             } else {
                 val recentChunks = recentTracks.take(6).chunked(2)
-                items(recentChunks, key = { it.first().id }) { chunk ->
+                items(recentChunks) { chunk ->
                     Row(
                         modifier = Modifier
                             .animateItem()
@@ -172,7 +172,7 @@ fun HomeScreen(navController: NavController) {
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(recommendedTracks.take(5), key = { it.id }) { track ->
+                        items(recommendedTracks.take(5)) { track ->
                             RecommendedTrackCard(
                                 track = track,
                                 modifier = Modifier.animateItem(),
@@ -192,7 +192,7 @@ fun HomeScreen(navController: NavController) {
                     TrackItemSkeleton()
                 }
             } else {
-                items(mostPlayedTracks.take(10), key = { it.id }) { track ->
+                items(mostPlayedTracks.take(10)) { track ->
                     TrackItem(
                         track = track,
                         modifier = Modifier.animateItem(),

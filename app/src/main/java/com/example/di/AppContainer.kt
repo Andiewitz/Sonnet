@@ -40,6 +40,7 @@ class AppContainer(private val context: Context) {
     val getLeastPlayedTracksUseCase = com.example.domain.usecase.GetLeastPlayedTracksUseCase(trackRepository)
     val getRecentTracksUseCase = com.example.domain.usecase.GetRecentTracksUseCase(trackRepository)
     val getPlaylistsUseCase = GetPlaylistsUseCase(playlistRepository)
+    val getTracksForPlaylistUseCase = com.example.domain.usecase.GetTracksForPlaylistUseCase(playlistRepository)
     val addToPlaylistUseCase = AddToPlaylistUseCase(playlistRepository)
     val getPlayHistoryUseCase = GetPlayHistoryUseCase(playHistoryRepository)
     val recordPlayUseCase = com.example.domain.usecase.RecordPlayUseCase(playHistoryRepository)
