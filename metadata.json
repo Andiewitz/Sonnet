@@ -1,0 +1,6 @@
+{
+  "name": "Sonnet",
+  "description": "A production-ready Android music player app with a Spotify-like UI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
