@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,9 +44,6 @@ class MainActivity : ComponentActivity() {
         
         val appContainer = (applicationContext as SonnetApplication).container
         val audioPlayer = appContainer.audioPlayer
-        val currentTrack by audioPlayer.currentTrack.collectAsStateWithLifecycle()
-        val isPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
-        val currentPosition by audioPlayer.currentPosition.collectAsStateWithLifecycle()
         
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
@@ -132,29 +130,45 @@ class MainActivity : ComponentActivity() {
                 com.example.presentation.screen.search.SearchScreen(navController = navController)
               }
             }
-
-            androidx.compose.animation.AnimatedVisibility(
-              visible = showMiniPlayer && currentTrack != null,
-              modifier = Modifier
-                  .align(Alignment.BottomCenter)
-                  .padding(horizontal = 16.dp, vertical = 12.dp),
-              enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }) + androidx.compose.animation.fadeIn(),
-              exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it }) + androidx.compose.animation.fadeOut()
-            ) {
-              currentTrack?.let { track ->
-                com.example.presentation.component.MiniPlayer(
-                  track = track,
-                  isPlaying = isPlaying,
-                  currentPosition = currentPosition,
-                  onPlayPauseClick = { audioPlayer.togglePlayPause() },
-                  modifier = Modifier
-                      .clickable { navController.navigate("now_playing/${track.id}") }
-                )
-              }
-            }
+            
+            MainMiniPlayer(
+                audioPlayer = audioPlayer,
+                navController = navController,
+                showMiniPlayer = showMiniPlayer,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
           }
         }
       }
     }
   }
+}
+
+@Composable
+fun MainMiniPlayer(
+    audioPlayer: com.example.player.AudioPlayer,
+    navController: androidx.navigation.NavController,
+    showMiniPlayer: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val currentTrack by audioPlayer.currentTrack.collectAsStateWithLifecycle()
+    val isPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
+
+    androidx.compose.animation.AnimatedVisibility(
+        visible = showMiniPlayer && currentTrack != null,
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }) + androidx.compose.animation.fadeIn(),
+        exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it }) + androidx.compose.animation.fadeOut()
+    ) {
+        currentTrack?.let { track ->
+            val currentPosition by audioPlayer.currentPosition.collectAsStateWithLifecycle()
+            com.example.presentation.component.MiniPlayer(
+                track = track,
+                isPlaying = isPlaying,
+                currentPosition = currentPosition,
+                onPlayPauseClick = { audioPlayer.togglePlayPause() },
+                modifier = Modifier.clickable { navController.navigate("now_playing/${track.id}") }
+            )
+        }
+    }
 }

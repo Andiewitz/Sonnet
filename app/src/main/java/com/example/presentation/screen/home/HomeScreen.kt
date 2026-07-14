@@ -106,18 +106,8 @@ fun HomeScreen(navController: NavController) {
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        itemsIndexed(playlists) { index, playlist ->
-                            var isVisible by remember { mutableStateOf(false) }
-                            LaunchedEffect(Unit) {
-                                kotlinx.coroutines.delay(index * 50L)
-                                isVisible = true
-                            }
-                            androidx.compose.animation.AnimatedVisibility(
-                                visible = isVisible,
-                                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInHorizontally(initialOffsetX = { it / 2 })
-                            ) {
-                                PlaylistCard(playlist)
-                            }
+                        items(playlists, key = { it.id }) { playlist ->
+                            PlaylistCard(playlist, modifier = Modifier.animateItem())
                         }
                     }
                 }
@@ -143,32 +133,23 @@ fun HomeScreen(navController: NavController) {
                 }
             } else {
                 val recentChunks = recentTracks.take(6).chunked(2)
-                itemsIndexed(recentChunks) { index, chunk ->
-                    var isVisible by remember { mutableStateOf(false) }
-                    LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(index * 50L)
-                        isVisible = true
-                    }
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = isVisible,
-                        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically(initialOffsetY = { it / 2 })
+                items(recentChunks, key = { it.first().id }) { chunk ->
+                    Row(
+                        modifier = Modifier
+                            .animateItem()
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            chunk.forEach { track ->
-                                RecentTrackCard(
-                                    track = track,
-                                    modifier = Modifier.weight(1f),
-                                    onClick = { viewModel.playTrack(track) }
-                                )
-                            }
-                            if (chunk.size == 1) {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
+                        chunk.forEach { track ->
+                            RecentTrackCard(
+                                track = track,
+                                modifier = Modifier.weight(1f),
+                                onClick = { viewModel.playTrack(track) }
+                            )
+                        }
+                        if (chunk.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -191,21 +172,12 @@ fun HomeScreen(navController: NavController) {
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        itemsIndexed(recommendedTracks.take(5)) { index, track ->
-                            var isVisible by remember { mutableStateOf(false) }
-                            LaunchedEffect(Unit) {
-                                kotlinx.coroutines.delay(index * 50L)
-                                isVisible = true
-                            }
-                            androidx.compose.animation.AnimatedVisibility(
-                                visible = isVisible,
-                                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInHorizontally(initialOffsetX = { it / 2 })
-                            ) {
-                                RecommendedTrackCard(
-                                    track = track,
-                                    onClick = { viewModel.playTrack(track) }
-                                )
-                            }
+                        items(recommendedTracks.take(5), key = { it.id }) { track ->
+                            RecommendedTrackCard(
+                                track = track,
+                                modifier = Modifier.animateItem(),
+                                onClick = { viewModel.playTrack(track) }
+                            )
                         }
                     }
                 }
@@ -220,21 +192,12 @@ fun HomeScreen(navController: NavController) {
                     TrackItemSkeleton()
                 }
             } else {
-                itemsIndexed(mostPlayedTracks.take(10)) { index, track ->
-                    var isVisible by remember { mutableStateOf(false) }
-                    LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(index * 50L)
-                        isVisible = true
-                    }
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = isVisible,
-                        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically(initialOffsetY = { it / 2 })
-                    ) {
-                        TrackItem(
-                            track = track,
-                            onClick = { viewModel.playTrack(track) }
-                        )
-                    }
+                items(mostPlayedTracks.take(10), key = { it.id }) { track ->
+                    TrackItem(
+                        track = track,
+                        modifier = Modifier.animateItem(),
+                        onClick = { viewModel.playTrack(track) }
+                    )
                 }
             }
             item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -253,9 +216,9 @@ fun SectionTitle(title: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun PlaylistCard(playlist: Playlist) {
+fun PlaylistCard(playlist: Playlist, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier.width(120.dp)
+        modifier = modifier.width(120.dp)
     ) {
         Box(
             modifier = Modifier
@@ -305,9 +268,9 @@ fun RecentTrackCard(track: Track, modifier: Modifier = Modifier, onClick: () -> 
 }
 
 @Composable
-fun RecommendedTrackCard(track: Track, onClick: () -> Unit) {
+fun RecommendedTrackCard(track: Track, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .width(160.dp)
             .clickable(onClick = onClick)
     ) {

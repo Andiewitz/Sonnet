@@ -59,20 +59,12 @@ fun NowPlayingScreen(
     
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val track by viewModel.currentTrack.collectAsStateWithLifecycle()
-    val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
     val shuffleModeEnabled by viewModel.shuffleModeEnabled.collectAsStateWithLifecycle()
     val repeatMode by viewModel.repeatMode.collectAsStateWithLifecycle()
     
     var isLiked by remember(track?.id) { mutableStateOf(false) }
     
     val duration = track?.durationMs ?: 1L
-    val sliderPosition = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-    
-    val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = sliderPosition,
-        animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.LinearEasing),
-        label = "progress_bar_animation"
-    )
 
     // Dynamic color simulation based on track id
     val targetBgColor = remember(track?.id) {
@@ -143,8 +135,12 @@ fun NowPlayingScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize(0.8f)
-                    .background(animatedGlowColor, CircleShape)
-                    .blur(40.dp)
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                            colors = listOf(animatedGlowColor, androidx.compose.ui.graphics.Color.Transparent)
+                        ),
+                        shape = CircleShape
+                    )
             )
             
             androidx.compose.animation.Crossfade(
@@ -213,29 +209,7 @@ fun NowPlayingScreen(
         Spacer(modifier = Modifier.height(32.dp))
         
         // Progress Bar
-        Column {
-            Slider(
-                value = animatedProgress,
-                onValueChange = { viewModel.seekTo((it * duration).toLong()) },
-                colors = SliderDefaults.colors(
-                    thumbColor = TextPrimary,
-                    activeTrackColor = AccentPrimary,
-                    inactiveTrackColor = BorderStrong
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                val currSeconds = (currentPosition / 1000) % 60
-                val currMinutes = (currentPosition / 1000) / 60
-                val durSeconds = (duration / 1000) % 60
-                val durMinutes = (duration / 1000) / 60
-                Text(String.format("%d:%02d", currMinutes, currSeconds), color = TextTertiary, style = MaterialTheme.typography.labelMedium)
-                Text(String.format("%d:%02d", durMinutes, durSeconds), color = TextTertiary, style = MaterialTheme.typography.labelMedium)
-            }
-        }
+        NowPlayingProgressBar(duration = duration, viewModel = viewModel)
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -329,6 +303,47 @@ fun NowPlayingScreen(
         }
         
         Spacer(modifier = Modifier.weight(0.5f))
+    }
+}
+
+@Composable
+fun NowPlayingProgressBar(
+    duration: Long,
+    viewModel: NowPlayingViewModel
+) {
+    val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
+    val sliderPosition by remember(duration) { 
+        derivedStateOf { if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f }
+    }
+    
+    val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = sliderPosition,
+        animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.LinearEasing),
+        label = "progress_bar_animation"
+    )
+
+    Column {
+        Slider(
+            value = animatedProgress,
+            onValueChange = { viewModel.seekTo((it * duration).toLong()) },
+            colors = SliderDefaults.colors(
+                thumbColor = TextPrimary,
+                activeTrackColor = AccentPrimary,
+                inactiveTrackColor = BorderStrong
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val currSeconds = (currentPosition / 1000) % 60
+            val currMinutes = (currentPosition / 1000) / 60
+            val durSeconds = (duration / 1000) % 60
+            val durMinutes = (duration / 1000) / 60
+            Text(String.format("%d:%02d", currMinutes, currSeconds), color = TextTertiary, style = MaterialTheme.typography.labelMedium)
+            Text(String.format("%d:%02d", durMinutes, durSeconds), color = TextTertiary, style = MaterialTheme.typography.labelMedium)
+        }
     }
 }
 

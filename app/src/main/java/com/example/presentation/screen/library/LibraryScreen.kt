@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -136,26 +137,15 @@ fun LibraryScreen(
                     )
                 }
             } else {
-                items(tracks.size) { index ->
-                    var isVisible by remember { mutableStateOf(false) }
-                    LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(index * 50L)
-                        isVisible = true
-                    }
-                    val track = tracks[index]
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = isVisible,
-                        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically(initialOffsetY = { it / 2 })
-                    ) {
-                        Column {
-                            TrackItem(track = track, onClick = { 
-                                viewModel.audioPlayer.setPlaylist(tracks, index)
-                            })
-                            HorizontalDivider(
-                                color = BorderSubtle,
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-                        }
+                itemsIndexed(tracks, key = { _, it -> it.id }) { index, track ->
+                    Column(modifier = Modifier.animateItem()) {
+                        TrackItem(track = track, onClick = { 
+                            viewModel.audioPlayer.setPlaylist(tracks, index)
+                        })
+                        HorizontalDivider(
+                            color = BorderSubtle,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
                     }
                 }
             }

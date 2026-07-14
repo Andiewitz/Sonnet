@@ -14,9 +14,9 @@ import com.example.domain.model.Track
 import com.example.presentation.theme.*
 
 @Composable
-fun TrackItem(track: Track, onClick: () -> Unit) {
+fun TrackItem(track: Track, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(vertical = 8.dp, horizontal = 16.dp),
