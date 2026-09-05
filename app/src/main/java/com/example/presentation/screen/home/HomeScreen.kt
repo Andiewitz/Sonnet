@@ -55,6 +55,7 @@ fun HomeScreen(navController: NavController) {
     val recommendedTracks by viewModel.recommendedTracks.collectAsStateWithLifecycle()
     val recentTracks by viewModel.recentTracks.collectAsStateWithLifecycle()
     val mostPlayedTracks by viewModel.mostPlayedTracks.collectAsStateWithLifecycle()
+    var trackToAdd by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<com.example.domain.model.Track?>(null) }
 
     Scaffold(
         containerColor = BgPrimary,
@@ -107,7 +108,13 @@ fun HomeScreen(navController: NavController) {
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         items(playlists) { playlist ->
-                            PlaylistCard(playlist, modifier = Modifier.animateItem())
+                            PlaylistCard(
+                                playlist = playlist,
+                                modifier = Modifier.animateItem(),
+                                onClick = {
+                                    navController.navigate("playlist/${playlist.id}?name=${android.net.Uri.encode(playlist.name)}")
+                                }
+                            )
                         }
                     }
                 }
@@ -196,12 +203,20 @@ fun HomeScreen(navController: NavController) {
                     TrackItem(
                         track = track,
                         modifier = Modifier.animateItem(),
-                        onClick = { viewModel.playTrack(track) }
+                        onClick = { viewModel.playTrack(track) },
+                        onMoreClick = { trackToAdd = track }
                     )
                 }
             }
             item { Spacer(modifier = Modifier.height(16.dp)) }
         }
+    }
+
+    trackToAdd?.let { track ->
+        com.example.presentation.component.AddToPlaylistDialog(
+            track = track,
+            onDismiss = { trackToAdd = null }
+        )
     }
 }
 
@@ -209,32 +224,35 @@ fun HomeScreen(navController: NavController) {
 fun SectionTitle(title: String, modifier: Modifier = Modifier) {
     Text(
         text = title,
-        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+        style = MaterialTheme.typography.titleLarge,
         color = TextPrimary,
         modifier = modifier
     )
 }
 
 @Composable
-fun PlaylistCard(playlist: Playlist, modifier: Modifier = Modifier) {
+fun PlaylistCard(playlist: Playlist, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
     Column(
-        modifier = modifier.width(120.dp)
+        modifier = modifier
+            .width(120.dp)
+            .clickable(onClick = onClick)
     ) {
-        Box(
-            modifier = Modifier
-                .size(120.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(BgTertiary),
-            contentAlignment = Alignment.Center
-        ) {
-            // Placeholder for playlist art, could be composite album art later
-            Text("🎵", style = MaterialTheme.typography.displayMedium)
-        }
+        com.example.presentation.component.PlaylistArtwork(
+            artworkUris = playlist.artworkUris,
+            modifier = Modifier.size(120.dp)
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = playlist.name,
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
             color = TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = "${playlist.trackCount} tracks",
+            style = MaterialTheme.typography.labelMedium,
+            color = TextSecondary,
             maxLines = 1
         )
     }

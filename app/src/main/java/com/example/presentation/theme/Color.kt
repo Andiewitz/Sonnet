@@ -9,14 +9,14 @@ val SurfaceElevated = Color(0xFF1A1A1A) // elevated
 val BorderSubtle = Color(0xFF2A2A2A) // border
 val BorderStrong = Color(0xFF2A2A2A) // border
 
-val AccentPrimary = Color(0xFF1DB954) // primary
-val AccentHover = Color(0xFF158A3E) // p-hover
-val AccentMuted = Color(0xFF0F5A29) // darker muted green
+val AccentPrimary = Color(0xFFD2F843) // vibrant lime primary
+val AccentHover = Color(0xFFBEEA2D) // lime hover
+val AccentMuted = Color(0xFF2E3A0E) // dark muted lime tint
 
 val TextPrimary = Color(0xFFFFFFFF) // text-hi
 val TextSecondary = Color(0xFF888888) // text-lo
 val TextTertiary = Color(0xFF666666)
-val TextOnAccent = Color(0xFFFFFFFF)
+val TextOnAccent = Color(0xFF0A0A0A) // high contrast on lime
 
 val Success = Color(0xFF5FA374)
 val Warning = Color(0xFFD4A14A)

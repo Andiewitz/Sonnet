@@ -1,43 +1,43 @@
 package com.example.presentation.screen.nowplaying
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.outlined.Cast
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.SonnetApplication
 import com.example.presentation.component.AlbumArt
 import com.example.presentation.theme.*
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,14 +65,15 @@ fun NowPlayingScreen(
     var isLiked by remember(track?.id) { mutableStateOf(false) }
     
     val duration = track?.durationMs ?: 1L
+    var showAddToPlaylistDialog by remember { mutableStateOf(false) }
 
     // Dynamic color simulation based on track id
     val targetBgColor = remember(track?.id) {
         val hash = track?.title?.hashCode() ?: 0
         val hue = (Math.abs(hash) % 360).toFloat()
-        androidx.compose.ui.graphics.Color.hsv(hue, 0.4f, 0.15f)
+        Color.hsv(hue, 0.4f, 0.15f)
     }
-    val animatedBgColor by androidx.compose.animation.animateColorAsState(
+    val animatedBgColor by animateColorAsState(
         targetValue = targetBgColor,
         animationSpec = androidx.compose.animation.core.tween(1000),
         label = "bg_color_animation"
@@ -88,8 +89,9 @@ fun NowPlayingScreen(
                     endY = 1000f
                 )
             )
-            .padding(24.dp)
-            .padding(top = 16.dp),
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Top Bar
@@ -106,27 +108,34 @@ fun NowPlayingScreen(
                 color = TextSecondary,
                 style = MaterialTheme.typography.labelSmall
             )
-            IconButton(onClick = { /*TODO*/ }) {
+            IconButton(onClick = { showAddToPlaylistDialog = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = TextPrimary)
             }
         }
         
         Spacer(modifier = Modifier.weight(1f))
 
+        // Artwork Scale based on playing state (expands when playing, shrinks slightly when paused)
+        val artworkScale by animateFloatAsState(
+            targetValue = if (isPlaying) 1.0f else 0.90f,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+            label = "artwork_scale"
+        )
+
         // Album Art with Glow
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f),
+                .aspectRatio(1f)
+                .graphicsLayer(scaleX = artworkScale, scaleY = artworkScale),
             contentAlignment = Alignment.Center
         ) {
-            // Glow
             val glowColor = remember(track?.id) {
                 val hash = track?.artist?.hashCode() ?: 0
                 val hue = (Math.abs(hash) % 360).toFloat()
-                androidx.compose.ui.graphics.Color.hsv(hue, 0.8f, 0.8f).copy(alpha = 0.18f)
+                Color.hsv(hue, 0.8f, 0.8f).copy(alpha = 0.18f)
             }
-            val animatedGlowColor by androidx.compose.animation.animateColorAsState(
+            val animatedGlowColor by animateColorAsState(
                 targetValue = glowColor,
                 animationSpec = androidx.compose.animation.core.tween(1000),
                 label = "glow_color_animation"
@@ -134,63 +143,74 @@ fun NowPlayingScreen(
 
             Box(
                 modifier = Modifier
-                    .fillMaxSize(0.8f)
+                    .fillMaxSize(0.85f)
                     .background(
                         brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                            colors = listOf(animatedGlowColor, androidx.compose.ui.graphics.Color.Transparent)
+                            colors = listOf(animatedGlowColor, Color.Transparent)
                         ),
                         shape = CircleShape
                     )
             )
             
-            androidx.compose.animation.Crossfade(
+            Crossfade(
                 targetState = track?.albumArtUri,
-                animationSpec = androidx.compose.animation.core.tween(800),
+                animationSpec = androidx.compose.animation.core.tween(600),
                 label = "album_art_crossfade"
             ) { uri ->
                 AlbumArt(
                     uri = uri,
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(16.dp))
                 )
             }
         }
         
         Spacer(modifier = Modifier.weight(1f))
 
-        // Track Info
+        // Animated Track Info Title & Artist
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = track?.title ?: "Unknown Track",
-                    style = MaterialTheme.typography.displayLarge,
-                    color = TextPrimary,
-                    maxLines = 1
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = track?.artist ?: "Unknown Artist",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = TextSecondary,
-                    maxLines = 1
-                )
+                AnimatedContent(
+                    targetState = (track?.title ?: "Unknown Track") to (track?.artist ?: "Unknown Artist"),
+                    transitionSpec = {
+                        (fadeIn(androidx.compose.animation.core.tween(300)) + slideInVertically { it / 2 }) togetherWith
+                        (fadeOut(androidx.compose.animation.core.tween(300)) + slideOutVertically { -it / 2 })
+                    },
+                    label = "track_info_transition"
+                ) { (title, artist) ->
+                    Column {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.displayLarge,
+                            color = TextPrimary,
+                            maxLines = 1
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = artist,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = TextSecondary,
+                            maxLines = 1
+                        )
+                    }
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val likeScale by androidx.compose.animation.core.animateFloatAsState(
-                    targetValue = if (isLiked) 1.2f else 1f,
-                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy),
+                val likeScale by animateFloatAsState(
+                    targetValue = if (isLiked) 1.25f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
                     label = "like_scale"
                 )
                 IconButton(
                     onClick = { isLiked = !isLiked },
                     modifier = Modifier.graphicsLayer(scaleX = likeScale, scaleY = likeScale)
                 ) {
-                    androidx.compose.animation.Crossfade(targetState = isLiked, label = "like_icon_crossfade") { liked ->
+                    Crossfade(targetState = isLiked, label = "like_icon_crossfade") { liked ->
                         Icon(
                             imageVector = if (liked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                             contentDescription = "Like",
@@ -200,7 +220,7 @@ fun NowPlayingScreen(
                     }
                 }
                 Spacer(modifier = Modifier.width(4.dp))
-                IconButton(onClick = { /*TODO*/ }) {
+                IconButton(onClick = { /* Share */ }) {
                     Icon(Icons.Outlined.Share, contentDescription = "Share", tint = TextPrimary)
                 }
             }
@@ -213,7 +233,7 @@ fun NowPlayingScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Controls
+        // Playback Controls with Spring Button Feedback
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -228,7 +248,20 @@ fun NowPlayingScreen(
                 )
             }
             
-            IconButton(onClick = { viewModel.skipToPrevious() }, modifier = Modifier.size(48.dp)) {
+            val prevInteraction = remember { MutableInteractionSource() }
+            val isPrevPressed by prevInteraction.collectIsPressedAsState()
+            val prevScale by animateFloatAsState(
+                targetValue = if (isPrevPressed) 0.85f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                label = "prev_scale"
+            )
+            IconButton(
+                onClick = { viewModel.skipToPrevious() },
+                interactionSource = prevInteraction,
+                modifier = Modifier
+                    .size(48.dp)
+                    .graphicsLayer(scaleX = prevScale, scaleY = prevScale)
+            ) {
                 Icon(
                     imageVector = Icons.Default.SkipPrevious,
                     contentDescription = "Previous",
@@ -237,11 +270,11 @@ fun NowPlayingScreen(
                 )
             }
             
-            val playInteractionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val playInteractionSource = remember { MutableInteractionSource() }
             val isPlayPressed by playInteractionSource.collectIsPressedAsState()
-            val playScale by androidx.compose.animation.core.animateFloatAsState(
+            val playScale by animateFloatAsState(
                 targetValue = if (isPlayPressed) 0.85f else 1f,
-                animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy),
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
                 label = "play_scale"
             )
 
@@ -253,16 +286,15 @@ fun NowPlayingScreen(
                     .background(AccentPrimary)
                     .clickable(
                         interactionSource = playInteractionSource,
-                        indication = androidx.compose.material3.ripple(),
+                        indication = ripple(),
                         onClick = { viewModel.togglePlayPause() }
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                androidx.compose.animation.AnimatedContent(
+                AnimatedContent(
                     targetState = isPlaying,
                     transitionSpec = {
-                        androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn() togetherWith 
-                        androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut()
+                        fadeIn() + scaleIn() togetherWith fadeOut() + scaleOut()
                     },
                     label = "play_pause_icon"
                 ) { playing ->
@@ -275,7 +307,20 @@ fun NowPlayingScreen(
                 }
             }
             
-            IconButton(onClick = { viewModel.skipToNext() }, modifier = Modifier.size(48.dp)) {
+            val nextInteraction = remember { MutableInteractionSource() }
+            val isNextPressed by nextInteraction.collectIsPressedAsState()
+            val nextScale by animateFloatAsState(
+                targetValue = if (isNextPressed) 0.85f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                label = "next_scale"
+            )
+            IconButton(
+                onClick = { viewModel.skipToNext() },
+                interactionSource = nextInteraction,
+                modifier = Modifier
+                    .size(48.dp)
+                    .graphicsLayer(scaleX = nextScale, scaleY = nextScale)
+            ) {
                 Icon(
                     imageVector = Icons.Default.SkipNext,
                     contentDescription = "Next",
@@ -304,6 +349,13 @@ fun NowPlayingScreen(
         
         Spacer(modifier = Modifier.weight(0.5f))
     }
+
+    if (showAddToPlaylistDialog && track != null) {
+        com.example.presentation.component.AddToPlaylistDialog(
+            track = track!!,
+            onDismiss = { showAddToPlaylistDialog = false }
+        )
+    }
 }
 
 @Composable
@@ -316,7 +368,7 @@ fun NowPlayingProgressBar(
         derivedStateOf { if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f }
     }
     
-    val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+    val animatedProgress by animateFloatAsState(
         targetValue = sliderPosition,
         animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.LinearEasing),
         label = "progress_bar_animation"
@@ -346,4 +398,3 @@ fun NowPlayingProgressBar(
         }
     }
 }
-

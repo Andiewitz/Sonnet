@@ -4,8 +4,10 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.example.data.db.entity.PlaylistEntity
 import com.example.data.db.entity.PlaylistTrackCrossRef
+import com.example.data.db.entity.PlaylistWithTracks
 import com.example.data.db.entity.TrackEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -13,6 +15,10 @@ import kotlinx.coroutines.flow.Flow
 interface PlaylistDao {
     @Query("SELECT * FROM playlists")
     fun getAllPlaylists(): Flow<List<PlaylistEntity>>
+
+    @Transaction
+    @Query("SELECT * FROM playlists")
+    fun getPlaylistsWithTracks(): Flow<List<PlaylistWithTracks>>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertPlaylist(playlist: PlaylistEntity): Long

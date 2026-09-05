@@ -7,15 +7,17 @@ import com.example.domain.model.Playlist
 import com.example.domain.model.Track
 import com.example.domain.usecase.GetAllTracksUseCase
 import com.example.domain.usecase.GetPlaylistsUseCase
+import com.example.domain.usecase.CreatePlaylistUseCase
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-
+import kotlinx.coroutines.launch
 import com.example.player.AudioPlayer
 
 class LibraryViewModel(
     getAllTracksUseCase: GetAllTracksUseCase,
     getPlaylistsUseCase: GetPlaylistsUseCase,
+    private val createPlaylistUseCase: CreatePlaylistUseCase,
     val audioPlayer: AudioPlayer
 ) : ViewModel() {
 
@@ -29,15 +31,22 @@ class LibraryViewModel(
     val isPlaying = audioPlayer.isPlaying
     val currentPosition = audioPlayer.currentPosition
 
+    fun createPlaylist(name: String) {
+        viewModelScope.launch {
+            createPlaylistUseCase(name)
+        }
+    }
+
     companion object {
         fun provideFactory(
             getAllTracksUseCase: GetAllTracksUseCase,
             getPlaylistsUseCase: GetPlaylistsUseCase,
+            createPlaylistUseCase: CreatePlaylistUseCase,
             audioPlayer: AudioPlayer
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return LibraryViewModel(getAllTracksUseCase, getPlaylistsUseCase, audioPlayer) as T
+                return LibraryViewModel(getAllTracksUseCase, getPlaylistsUseCase, createPlaylistUseCase, audioPlayer) as T
             }
         }
     }

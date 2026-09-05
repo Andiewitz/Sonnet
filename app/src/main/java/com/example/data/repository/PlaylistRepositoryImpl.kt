@@ -13,8 +13,15 @@ class PlaylistRepositoryImpl(
     private val playlistDao: PlaylistDao
 ) : PlaylistRepository {
     override fun getAllPlaylists(): Flow<List<Playlist>> {
-        return playlistDao.getAllPlaylists().map { list ->
-            list.map { Playlist(it.id, it.name, 0) } // Stub trackCount
+        return playlistDao.getPlaylistsWithTracks().map { list ->
+            list.map { item ->
+                Playlist(
+                    id = item.playlist.id,
+                    name = item.playlist.name,
+                    trackCount = item.tracks.size,
+                    artworkUris = item.tracks.mapNotNull { it.albumArtUri }.take(4)
+                )
+            }
         }
     }
 

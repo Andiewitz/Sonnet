@@ -17,8 +17,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Cast
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,9 +57,14 @@ fun LibraryScreen(
         factory = LibraryViewModel.provideFactory(
             appContainer.getAllTracksUseCase,
             appContainer.getPlaylistsUseCase,
+            appContainer.createPlaylistUseCase,
             appContainer.audioPlayer
         )
     )
+
+    var showAddDialog by remember { mutableStateOf(false) }
+    var newPlaylistName by remember { mutableStateOf("") }
+    var isGridView by remember { mutableStateOf(false) }
 
     // Trigger scan on startup
     val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -87,9 +95,14 @@ fun LibraryScreen(
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
 
-    val allPlaylists = remember(tracks.size, playlists) {
+    val allPlaylists = remember(tracks, playlists) {
         listOf(
-            com.example.domain.model.Playlist(id = -1L, name = "All Songs", trackCount = tracks.size)
+            com.example.domain.model.Playlist(
+                id = -1L,
+                name = "All Songs",
+                trackCount = tracks.size,
+                artworkUris = tracks.mapNotNull { it.albumArtUri }.take(4)
+            )
         ) + playlists
     }
 
@@ -117,8 +130,11 @@ fun LibraryScreen(
                         style = MaterialTheme.typography.displayMedium
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        IconButton(onClick = {}, modifier = Modifier.size(36.dp).background(BgTertiary, CircleShape)) {
-                            Icon(Icons.Outlined.Cast, contentDescription = "Cast", tint = TextPrimary, modifier = Modifier.size(20.dp))
+                        IconButton(onClick = { showAddDialog = true }, modifier = Modifier.size(36.dp).background(BgTertiary, CircleShape)) {
+                            Icon(Icons.Filled.Add, contentDescription = "Add Playlist", tint = TextPrimary, modifier = Modifier.size(20.dp))
+                        }
+                        IconButton(onClick = { isGridView = !isGridView }, modifier = Modifier.size(36.dp).background(BgTertiary, CircleShape)) {
+                            Icon(if (isGridView) Icons.AutoMirrored.Filled.List else Icons.Filled.GridView, contentDescription = "Toggle View", tint = TextPrimary, modifier = Modifier.size(20.dp))
                         }
                         IconButton(onClick = {}, modifier = Modifier.size(36.dp).background(BgTertiary, CircleShape)) {
                             Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = TextPrimary, modifier = Modifier.size(20.dp))
@@ -136,47 +152,126 @@ fun LibraryScreen(
                 )
             }
 
-            items(allPlaylists, key = { it.id }) { playlist ->
-                Row(
-                    modifier = Modifier
-                        .animateItem()
-                        .fillMaxWidth()
-                        .clickable {
-                            navController.navigate("playlist/${playlist.id}?name=${android.net.Uri.encode(playlist.name)}")
-                        }
-                        .padding(vertical = 12.dp, horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
+            if (isGridView) {
+                val chunks = allPlaylists.chunked(2)
+                items(chunks, key = { it.first().id }) { chunk ->
+                    Row(
                         modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (playlist.id == -1L) AccentPrimary else BgTertiary),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.LibraryMusic,
-                            contentDescription = null,
-                            tint = if (playlist.id == -1L) Color.Black else TextTertiary
-                        )
+                        for (playlist in chunk) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        navController.navigate("playlist/${playlist.id}?name=${android.net.Uri.encode(playlist.name)}")
+                                    }
+                                    .padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                com.example.presentation.component.PlaylistArtwork(
+                                    artworkUris = playlist.artworkUris,
+                                    isAllSongs = playlist.id == -1L,
+                                    modifier = Modifier.size(100.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = playlist.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = TextPrimary,
+                                    maxLines = 1
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "${playlist.trackCount} tracks",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                        if (chunk.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = playlist.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TextPrimary,
-                            maxLines = 1
+                }
+            } else {
+                items(allPlaylists, key = { it.id }) { playlist ->
+                    Row(
+                        modifier = Modifier
+                            .animateItem()
+                            .fillMaxWidth()
+                            .clickable {
+                                navController.navigate("playlist/${playlist.id}?name=${android.net.Uri.encode(playlist.name)}")
+                            }
+                            .padding(vertical = 12.dp, horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        com.example.presentation.component.PlaylistArtwork(
+                            artworkUris = playlist.artworkUris,
+                            isAllSongs = playlist.id == -1L,
+                            modifier = Modifier.size(56.dp)
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${playlist.trackCount} tracks",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = TextSecondary
-                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = playlist.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = TextPrimary,
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "${playlist.trackCount} tracks",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = TextSecondary
+                            )
+                        }
                     }
                 }
             }
+        }
+
+        if (showAddDialog) {
+            AlertDialog(
+                onDismissRequest = { showAddDialog = false },
+                title = { Text("Create Playlist", color = TextPrimary) },
+                text = {
+                    OutlinedTextField(
+                        value = newPlaylistName,
+                        onValueChange = { newPlaylistName = it },
+                        label = { Text("Playlist Name") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedBorderColor = AccentPrimary,
+                            unfocusedBorderColor = BorderSubtle
+                        )
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (newPlaylistName.isNotBlank()) {
+                                viewModel.createPlaylist(newPlaylistName.trim())
+                                newPlaylistName = ""
+                                showAddDialog = false
+                            }
+                        }
+                    ) {
+                        Text("Create", color = AccentPrimary)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showAddDialog = false }) {
+                        Text("Cancel", color = TextSecondary)
+                    }
+                },
+                containerColor = BgSecondary
+            )
         }
     }
 }
