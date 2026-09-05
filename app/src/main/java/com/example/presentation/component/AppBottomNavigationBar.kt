@@ -16,9 +16,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -97,6 +99,16 @@ fun AppBottomNavigationBar(navController: NavController) {
                 selectedIcon = Icons.Filled.LibraryMusic,
                 unselectedIcon = Icons.Outlined.LibraryMusic,
                 label = "Library"
+            )
+
+            val isSettingsSelected = currentDestination?.route == "settings"
+            NavItem(
+                modifier = Modifier.weight(1f),
+                selected = isSettingsSelected,
+                onClick = { navigateToTab("settings") },
+                selectedIcon = Icons.Filled.Settings,
+                unselectedIcon = Icons.Outlined.Settings,
+                label = "Settings"
             )
         }
     }

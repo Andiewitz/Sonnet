@@ -150,8 +150,9 @@ fun LibraryScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
+                .padding(padding)
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp)
         ) {
             item {
                 Row(

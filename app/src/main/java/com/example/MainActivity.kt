@@ -26,6 +26,7 @@ import com.example.presentation.screen.library.LibraryScreen
 import com.example.presentation.screen.nowplaying.NowPlayingScreen
 import com.example.presentation.screen.playlist.PlaylistDetailScreen
 import com.example.presentation.screen.search.SearchScreen
+import com.example.presentation.screen.settings.SettingsScreen
 import com.example.presentation.theme.AppTheme
 import com.example.presentation.theme.BgPrimary
 
@@ -53,7 +54,7 @@ class MainActivity : ComponentActivity() {
                 val currentRoute = navBackStackEntry?.destination?.route
 
                 val isNowPlaying = currentRoute?.startsWith("now_playing") == true
-                val showBottomBar = !isNowPlaying && (currentRoute == "home" || currentRoute == "library" || currentRoute == "search")
+                val showBottomBar = !isNowPlaying && (currentRoute == "home" || currentRoute == "library" || currentRoute == "search" || currentRoute == "settings")
                 val showMiniPlayer = !isNowPlaying
 
                 Box(
@@ -142,6 +143,9 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("search") {
                             SearchScreen(navController = navController)
+                        }
+                        composable("settings") {
+                            SettingsScreen(navController = navController)
                         }
                         composable(
                             route = "playlist/{playlistId}?name={name}",

@@ -10,8 +10,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Cast
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,35 +61,42 @@ fun HomeScreen(navController: NavController) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
+                .padding(padding)
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(top = 28.dp, bottom = 100.dp)
         ) {
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "SONNET",
+                        text = "Goodmorning, Andrei",
                         color = TextPrimary,
                         style = MaterialTheme.typography.displayMedium
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        IconButton(onClick = {}, modifier = Modifier.size(36.dp).background(BgTertiary, CircleShape)) {
-                            Icon(Icons.Outlined.Cast, contentDescription = "Cast", tint = TextPrimary, modifier = Modifier.size(20.dp))
-                        }
-                        IconButton(onClick = {}, modifier = Modifier.size(36.dp).background(BgTertiary, CircleShape)) {
-                            Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = TextPrimary, modifier = Modifier.size(20.dp))
-                        }
+                    IconButton(
+                        onClick = { navController.navigate("settings") },
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(BgTertiary, CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Equalizer,
+                            contentDescription = "Equalizer",
+                            tint = AccentPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
                 }
             }
             
             item {
-                SectionTitle("Your Top Playlists", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+                SectionTitle("Your Top Playlists", Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
                 if (playlists.isEmpty()) {
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 16.dp),
