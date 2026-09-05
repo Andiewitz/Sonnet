@@ -16,29 +16,45 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
+import coil.request.CachePolicy
 import coil.request.ImageRequest
+import coil.size.Precision
+import coil.size.Scale
 import com.example.presentation.theme.BgTertiary
 import com.example.presentation.theme.TextTertiary
 
 @Composable
 fun AlbumArt(uri: String?, modifier: Modifier = Modifier) {
-    var isError by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(true) }
+    var isError by remember(uri) { mutableStateOf(false) }
+    var isLoading by remember(uri) { mutableStateOf(!uri.isNullOrBlank()) }
 
     Box(
         modifier = modifier.background(BgTertiary),
         contentAlignment = Alignment.Center
     ) {
         if (uri.isNullOrBlank() || isError || isLoading) {
-            Icon(imageVector = Icons.Default.Album, contentDescription = null, tint = TextTertiary)
+            Icon(
+                imageVector = Icons.Default.Album,
+                contentDescription = null,
+                tint = TextTertiary
+            )
         }
         
         if (!uri.isNullOrBlank()) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
+            val context = LocalContext.current
+            val imageRequest = remember(uri) {
+                ImageRequest.Builder(context)
                     .data(uri)
-                    .crossfade(true)
-                    .build(),
+                    .crossfade(150)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .precision(Precision.INEXACT) // Allows downscaling efficiently without exact pixel overhead
+                    .scale(Scale.FILL)
+                    .build()
+            }
+
+            AsyncImage(
+                model = imageRequest,
                 contentDescription = "Album Art",
                 modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Crop,
@@ -50,3 +66,4 @@ fun AlbumArt(uri: String?, modifier: Modifier = Modifier) {
         }
     }
 }
+

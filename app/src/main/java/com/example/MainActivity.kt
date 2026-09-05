@@ -68,66 +68,88 @@ class MainActivity : ComponentActivity() {
                         enterTransition = {
                             val targetRoute = targetState.destination.route ?: ""
                             val initialRoute = initialState.destination.route ?: ""
+                            val isTabSwitch = (initialRoute in listOf("home", "library", "search", "settings")) &&
+                                    (targetRoute in listOf("home", "library", "search", "settings"))
+
                             if (targetRoute.startsWith("now_playing")) {
                                 slideInVertically(
                                     initialOffsetY = { it },
-                                    animationSpec = tween(350, easing = FastOutSlowInEasing)
-                                ) + fadeIn(animationSpec = tween(250))
+                                    animationSpec = tween(280, easing = FastOutSlowInEasing)
+                                ) + fadeIn(animationSpec = tween(200))
                             } else if (initialRoute.startsWith("now_playing")) {
                                 EnterTransition.None
+                            } else if (isTabSwitch) {
+                                fadeIn(animationSpec = tween(120))
                             } else {
-                                fadeIn(animationSpec = tween(220)) +
+                                fadeIn(animationSpec = tween(140)) +
                                         slideInHorizontally(
-                                            initialOffsetX = { 100 },
-                                            animationSpec = tween(220, easing = FastOutSlowInEasing)
+                                            initialOffsetX = { 60 },
+                                            animationSpec = tween(180, easing = FastOutSlowInEasing)
                                         )
                             }
                         },
                         exitTransition = {
                             val targetRoute = targetState.destination.route ?: ""
                             val initialRoute = initialState.destination.route ?: ""
+                            val isTabSwitch = (initialRoute in listOf("home", "library", "search", "settings")) &&
+                                    (targetRoute in listOf("home", "library", "search", "settings"))
+
                             if (targetRoute.startsWith("now_playing")) {
                                 slideOutVertically(
-                                    targetOffsetY = { 60 },
-                                    animationSpec = tween(350, easing = FastOutSlowInEasing)
-                                ) + fadeOut(animationSpec = tween(250))
+                                    targetOffsetY = { 40 },
+                                    animationSpec = tween(280, easing = FastOutSlowInEasing)
+                                ) + fadeOut(animationSpec = tween(180))
                             } else if (initialRoute.startsWith("now_playing")) {
                                 ExitTransition.None
+                            } else if (isTabSwitch) {
+                                fadeOut(animationSpec = tween(100))
                             } else {
-                                fadeOut(animationSpec = tween(220)) +
+                                fadeOut(animationSpec = tween(140)) +
                                         slideOutHorizontally(
-                                            targetOffsetX = { -100 },
-                                            animationSpec = tween(220, easing = FastOutSlowInEasing)
+                                            targetOffsetX = { -60 },
+                                            animationSpec = tween(180, easing = FastOutSlowInEasing)
                                         )
                             }
                         },
                         popEnterTransition = {
                             val initialRoute = initialState.destination.route ?: ""
+                            val targetRoute = targetState.destination.route ?: ""
+                            val isTabSwitch = (initialRoute in listOf("home", "library", "search", "settings")) &&
+                                    (targetRoute in listOf("home", "library", "search", "settings"))
+
                             if (initialRoute.startsWith("now_playing")) {
                                 slideInVertically(
-                                    initialOffsetY = { 60 },
-                                    animationSpec = tween(350, easing = FastOutSlowInEasing)
-                                ) + fadeIn(animationSpec = tween(250))
+                                    initialOffsetY = { 40 },
+                                    animationSpec = tween(280, easing = FastOutSlowInEasing)
+                                ) + fadeIn(animationSpec = tween(180))
+                            } else if (isTabSwitch) {
+                                fadeIn(animationSpec = tween(120))
                             } else {
-                                fadeIn(animationSpec = tween(220)) +
+                                fadeIn(animationSpec = tween(140)) +
                                         slideInHorizontally(
-                                            initialOffsetX = { -100 },
-                                            animationSpec = tween(220, easing = FastOutSlowInEasing)
+                                            initialOffsetX = { -60 },
+                                            animationSpec = tween(180, easing = FastOutSlowInEasing)
                                         )
                             }
                         },
                         popExitTransition = {
                             val initialRoute = initialState.destination.route ?: ""
+                            val targetRoute = targetState.destination.route ?: ""
+                            val isTabSwitch = (initialRoute in listOf("home", "library", "search", "settings")) &&
+                                    (targetRoute in listOf("home", "library", "search", "settings"))
+
                             if (initialRoute.startsWith("now_playing")) {
                                 slideOutVertically(
                                     targetOffsetY = { it },
-                                    animationSpec = tween(350, easing = FastOutSlowInEasing)
-                                ) + fadeOut(animationSpec = tween(250))
+                                    animationSpec = tween(280, easing = FastOutSlowInEasing)
+                                ) + fadeOut(animationSpec = tween(200))
+                            } else if (isTabSwitch) {
+                                fadeOut(animationSpec = tween(100))
                             } else {
-                                fadeOut(animationSpec = tween(220)) +
+                                fadeOut(animationSpec = tween(140)) +
                                         slideOutHorizontally(
-                                            targetOffsetX = { 100 },
-                                            animationSpec = tween(220, easing = FastOutSlowInEasing)
+                                            targetOffsetX = { 60 },
+                                            animationSpec = tween(180, easing = FastOutSlowInEasing)
                                         )
                             }
                         }

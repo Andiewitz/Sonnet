@@ -71,13 +71,25 @@ fun HomeScreen(navController: NavController) {
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Text(
-                        text = "Goodmorning, Andrei",
-                        color = TextPrimary,
-                        style = MaterialTheme.typography.displayMedium
-                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 16.dp)
+                    ) {
+                        Text(
+                            text = "Goodmorning,",
+                            color = TextSecondary,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Andrei",
+                            color = TextPrimary,
+                            style = MaterialTheme.typography.displayMedium
+                        )
+                    }
                     IconButton(
                         onClick = { navController.navigate("settings") },
                         modifier = Modifier
