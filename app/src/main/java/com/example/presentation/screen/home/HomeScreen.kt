@@ -33,7 +33,6 @@ import com.example.presentation.component.TrackItem
 import com.example.presentation.component.AlbumArt
 import com.example.presentation.component.PlaylistCardSkeleton
 import com.example.presentation.component.RecentTrackCardSkeleton
-import com.example.presentation.component.RecommendedTrackCardSkeleton
 import com.example.presentation.component.TrackItemSkeleton
 import com.example.presentation.theme.*
 
@@ -52,7 +51,6 @@ fun HomeScreen(navController: NavController) {
     )
 
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
-    val recommendedTracks by viewModel.recommendedTracks.collectAsStateWithLifecycle()
     val recentTracks by viewModel.recentTracks.collectAsStateWithLifecycle()
     val mostPlayedTracks by viewModel.mostPlayedTracks.collectAsStateWithLifecycle()
     var trackToAdd by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<com.example.domain.model.Track?>(null) }
@@ -164,35 +162,7 @@ fun HomeScreen(navController: NavController) {
             item { Spacer(modifier = Modifier.height(16.dp)) }
 
             item {
-                SectionTitle("Recommended", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                if (recommendedTracks.isEmpty()) {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(4) {
-                            RecommendedTrackCardSkeleton()
-                        }
-                    }
-                } else {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(recommendedTracks.take(5)) { track ->
-                            RecommendedTrackCard(
-                                track = track,
-                                modifier = Modifier.animateItem(),
-                                onClick = { viewModel.playTrack(track) }
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            item {
-                SectionTitle("Most Played", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                SectionTitle("Your Top Picks", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
             }
             if (mostPlayedTracks.isEmpty()) {
                 items(5) {
@@ -281,38 +251,6 @@ fun RecentTrackCard(track: Track, modifier: Modifier = Modifier, onClick: () -> 
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(end = 8.dp)
-        )
-    }
-}
-
-@Composable
-fun RecommendedTrackCard(track: Track, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Column(
-        modifier = modifier
-            .width(160.dp)
-            .clickable(onClick = onClick)
-    ) {
-        AlbumArt(
-            uri = track.albumArtUri,
-            modifier = Modifier
-                .size(160.dp)
-                .clip(RoundedCornerShape(0.dp))
-                .background(BgTertiary)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = track.title,
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-            color = TextPrimary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            text = track.artist,
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
         )
     }
 }
