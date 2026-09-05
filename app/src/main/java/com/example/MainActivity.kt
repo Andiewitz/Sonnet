@@ -19,6 +19,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.presentation.screen.album.AlbumDetailScreen
+import com.example.presentation.screen.artist.ArtistDetailScreen
 import com.example.presentation.screen.home.HomeScreen
 import com.example.presentation.screen.library.LibraryScreen
 import com.example.presentation.screen.nowplaying.NowPlayingScreen
@@ -153,6 +155,30 @@ class MainActivity : ComponentActivity() {
                             PlaylistDetailScreen(
                                 playlistId = playlistId,
                                 playlistName = name,
+                                navController = navController
+                            )
+                        }
+                        composable(
+                            route = "album/{albumTitle}",
+                            arguments = listOf(
+                                androidx.navigation.navArgument("albumTitle") { type = androidx.navigation.NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val albumTitle = backStackEntry.arguments?.getString("albumTitle") ?: ""
+                            AlbumDetailScreen(
+                                albumTitle = albumTitle,
+                                navController = navController
+                            )
+                        }
+                        composable(
+                            route = "artist/{artistName}",
+                            arguments = listOf(
+                                androidx.navigation.navArgument("artistName") { type = androidx.navigation.NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val artistName = backStackEntry.arguments?.getString("artistName") ?: ""
+                            ArtistDetailScreen(
+                                artistName = artistName,
                                 navController = navController
                             )
                         }
