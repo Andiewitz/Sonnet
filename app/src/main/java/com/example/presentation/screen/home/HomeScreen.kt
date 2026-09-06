@@ -53,6 +53,7 @@ fun HomeScreen(navController: NavController) {
     val recentTracks by viewModel.recentTracks.collectAsStateWithLifecycle()
     val mostPlayedTracks by viewModel.mostPlayedTracks.collectAsStateWithLifecycle()
     var trackToAdd by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<com.example.domain.model.Track?>(null) }
+    var showEqualizer by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     Scaffold(
         containerColor = BgPrimary,
@@ -91,16 +92,14 @@ fun HomeScreen(navController: NavController) {
                         )
                     }
                     IconButton(
-                        onClick = { navController.navigate("settings") },
+                        onClick = { showEqualizer = true },
                         modifier = Modifier
                             .size(42.dp)
                             .background(BgTertiary, CircleShape)
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Equalizer,
-                            contentDescription = "Equalizer",
+                        com.example.presentation.component.EqualizerIcon(
                             tint = AccentPrimary,
-                            modifier = Modifier.size(22.dp)
+                            size = 22.dp
                         )
                     }
                 }
@@ -168,7 +167,7 @@ fun HomeScreen(navController: NavController) {
                             RecentTrackCard(
                                 track = track,
                                 modifier = Modifier.weight(1f),
-                                onClick = { viewModel.playTrack(track) }
+                                onClick = { viewModel.playRecentTrack(track) }
                             )
                         }
                         if (chunk.size == 1) {
@@ -191,7 +190,7 @@ fun HomeScreen(navController: NavController) {
                     TrackItem(
                         track = track,
                         modifier = Modifier.animateItem(),
-                        onClick = { viewModel.playTrack(track) },
+                        onClick = { viewModel.playTopPickTrack(track) },
                         onMoreClick = { trackToAdd = track }
                     )
                 }
@@ -204,6 +203,13 @@ fun HomeScreen(navController: NavController) {
         com.example.presentation.component.AddToPlaylistDialog(
             track = track,
             onDismiss = { trackToAdd = null }
+        )
+    }
+
+    if (showEqualizer) {
+        com.example.presentation.component.EqualizerBottomSheet(
+            equalizerManager = appContainer.audioPlayer.equalizerManager,
+            onDismiss = { showEqualizer = false }
         )
     }
 }

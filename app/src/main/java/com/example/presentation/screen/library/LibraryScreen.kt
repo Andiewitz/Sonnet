@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,8 +72,8 @@ fun LibraryScreen(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var newPlaylistName by remember { mutableStateOf("") }
-    var isGridView by remember { mutableStateOf(false) }
-    var selectedCategory by remember { mutableStateOf("Playlists") } // "Playlists", "Albums", "Artists"
+    var isGridView by rememberSaveable { mutableStateOf(false) }
+    var selectedCategory by rememberSaveable { mutableStateOf("Playlists") } // "Playlists", "Albums", "Artists"
 
     // Trigger scan on startup
     val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -176,7 +177,7 @@ fun LibraryScreen(
                         IconButton(onClick = { isGridView = !isGridView }, modifier = Modifier.size(36.dp).background(BgTertiary, CircleShape)) {
                             Icon(if (isGridView) Icons.AutoMirrored.Filled.List else Icons.Filled.GridView, contentDescription = "Toggle View", tint = TextPrimary, modifier = Modifier.size(20.dp))
                         }
-                        IconButton(onClick = {}, modifier = Modifier.size(36.dp).background(BgTertiary, CircleShape)) {
+                        IconButton(onClick = { navController.navigate("settings") }, modifier = Modifier.size(36.dp).background(BgTertiary, CircleShape)) {
                             Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = TextPrimary, modifier = Modifier.size(20.dp))
                         }
                     }

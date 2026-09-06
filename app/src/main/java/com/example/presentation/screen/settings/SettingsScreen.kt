@@ -23,9 +23,12 @@ import com.example.presentation.theme.*
 
 @Composable
 fun SettingsScreen(navController: NavController) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val appContainer = (context.applicationContext as com.example.SonnetApplication).container
     var isGaplessPlayback by remember { mutableStateOf(true) }
     var isNormalizeVolume by remember { mutableStateOf(false) }
     var isHighQualityAudio by remember { mutableStateOf(true) }
+    var showEqualizer by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = BgPrimary,
@@ -65,10 +68,15 @@ fun SettingsScreen(navController: NavController) {
 
             item {
                 SettingsToggleRow(
-                    icon = Icons.Outlined.GraphicEq,
+                    customIcon = {
+                        com.example.presentation.component.EqualizerIcon(
+                            tint = TextPrimary,
+                            size = 20.dp
+                        )
+                    },
                     title = "Equalizer",
                     subtitle = "Adjust audio frequencies & sound profiles",
-                    onClick = { /* open equalizer */ }
+                    onClick = { showEqualizer = true }
                 )
             }
 
@@ -140,6 +148,13 @@ fun SettingsScreen(navController: NavController) {
             }
         }
     }
+
+    if (showEqualizer) {
+        com.example.presentation.component.EqualizerBottomSheet(
+            equalizerManager = appContainer.audioPlayer.equalizerManager,
+            onDismiss = { showEqualizer = false }
+        )
+    }
 }
 
 @Composable
@@ -157,10 +172,11 @@ private fun SettingsSectionHeader(title: String) {
 
 @Composable
 private fun SettingsToggleRow(
-    icon: ImageVector,
     title: String,
     subtitle: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    icon: ImageVector? = null,
+    customIcon: (@Composable () -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -175,12 +191,16 @@ private fun SettingsToggleRow(
                 .background(BgTertiary, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = TextPrimary,
-                modifier = Modifier.size(20.dp)
-            )
+            if (customIcon != null) {
+                customIcon()
+            } else if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = TextPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(16.dp))

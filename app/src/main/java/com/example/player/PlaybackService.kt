@@ -1,15 +1,21 @@
 package com.example.player
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
-import androidx.media3.common.AudioAttributes
-import androidx.media3.common.C
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
+import com.example.MainActivity
 import com.example.SonnetApplication
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -17,20 +23,43 @@ import com.google.common.util.concurrent.ListenableFuture
 class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
 
+    companion object {
+        const val NOTIFICATION_CHANNEL_ID = "sonnet_playback_channel"
+    }
+
     override fun onCreate() {
         super.onCreate()
-        
-        // We'll create the ExoPlayer here, or we can use the one from AppContainer.
-        // Let's use the one from AppContainer so we don't break existing AudioPlayer logic
-        // if AudioPlayer still directly references its own ExoPlayer.
-        // Actually, it's safer to have AudioPlayer use this service, OR
-        // just wrap the AppContainer's ExoPlayer.
+
+        createNotificationChannel()
+
         val appContainer = (application as SonnetApplication).container
-        val player = appContainer.audioPlayer.player
-        
+        val rawPlayer = appContainer.audioPlayer.player
+        val player = AlwaysNavigablePlayer(rawPlayer)
+
+        // PendingIntent to launch/return to the app when notification/media toaster is clicked
+        val intent = Intent(this, MainActivity::class.java).apply {
+            action = Intent.ACTION_MAIN
+            addCategory(Intent.CATEGORY_LAUNCHER)
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         mediaSession = MediaSession.Builder(this, player)
+            .setSessionActivity(pendingIntent)
             .setCallback(CustomCallback())
             .build()
+
+        // Configure notification provider to use our channel and app name
+        val notificationProvider = DefaultMediaNotificationProvider.Builder(this)
+            .setChannelId(NOTIFICATION_CHANNEL_ID)
+            .setChannelName(com.example.R.string.playback_channel_name)
+            .build()
+        setMediaNotificationProvider(notificationProvider)
 
         player.addListener(object : Player.Listener {
             override fun onRepeatModeChanged(repeatMode: Int) {
@@ -42,6 +71,22 @@ class PlaybackService : MediaSessionService() {
         })
 
         mediaSession?.let { updateCustomLayout(it) }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                getString(com.example.R.string.playback_channel_name),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = getString(com.example.R.string.playback_channel_description)
+                setShowBadge(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
     }
 
     private fun updateCustomLayout(session: MediaSession) {
@@ -75,8 +120,6 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         mediaSession?.run {
-            // We don't release the player here because AppContainer owns it, 
-            // but we do release the session.
             release()
             mediaSession = null
         }
@@ -93,9 +136,15 @@ class PlaybackService : MediaSessionService() {
                 .add(SessionCommand("ACTION_REPEAT", Bundle.EMPTY))
                 .add(SessionCommand("ACTION_SHUFFLE", Bundle.EMPTY))
                 .build()
+            val playerCommands = connectionResult.availablePlayerCommands.buildUpon()
+                .add(Player.COMMAND_SEEK_TO_PREVIOUS)
+                .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                .add(Player.COMMAND_SEEK_TO_NEXT)
+                .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                .build()
             return MediaSession.ConnectionResult.accept(
                 sessionCommands,
-                connectionResult.availablePlayerCommands
+                playerCommands
             )
         }
 

@@ -27,6 +27,26 @@ class HomeViewModel(
         audioPlayer.playTrack(track)
     }
 
+    fun playRecentTrack(track: Track) {
+        val tracks = recentTracks.value
+        val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+        if (tracks.isNotEmpty()) {
+            audioPlayer.setPlaylist(tracks, index)
+        } else {
+            audioPlayer.playTrack(track)
+        }
+    }
+
+    fun playTopPickTrack(track: Track) {
+        val tracks = mostPlayedTracks.value
+        val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+        if (tracks.isNotEmpty()) {
+            audioPlayer.setPlaylist(tracks, index)
+        } else {
+            audioPlayer.playTrack(track)
+        }
+    }
+
     val playlists: StateFlow<List<Playlist>> = getPlaylistsUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

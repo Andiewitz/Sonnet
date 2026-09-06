@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,7 +65,7 @@ fun SearchScreen(navController: NavController) {
 
     val allTracks by viewModel.allTracks.collectAsStateWithLifecycle()
     val mostPlayedTracks by viewModel.mostPlayedTracks.collectAsStateWithLifecycle()
-    var searchQuery by remember { mutableStateOf("") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     var trackToAddByDialog by remember { mutableStateOf<Track?>(null) }
 
     // All available albums grouped from library tracks

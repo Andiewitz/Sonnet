@@ -20,6 +20,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class AudioPlayer(context: Context) {
+    val equalizerManager = EqualizerManager()
+
     val player = ExoPlayer.Builder(context)
         .setAudioAttributes(
             androidx.media3.common.AudioAttributes.Builder()
@@ -140,6 +142,10 @@ class AudioPlayer(context: Context) {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _isPlaying.value = isPlaying
                 if (isPlaying) {
+                    val sessionId = player.audioSessionId
+                    if (sessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
+                        equalizerManager.bindAudioSession(sessionId)
+                    }
                     startProgressTracker()
                 } else {
                     stopProgressTracker()
@@ -191,7 +197,13 @@ class AudioPlayer(context: Context) {
     }
     
     fun playTrack(track: Track) {
-        setPlaylist(listOf(track), 0)
+        val existingIndex = playlist.indexOfFirst { it.id == track.id }
+        if (existingIndex != -1 && player.mediaItemCount == playlist.size) {
+            player.seekTo(existingIndex, 0L)
+            player.play()
+        } else {
+            setPlaylist(listOf(track), 0)
+        }
     }
 
     fun togglePlayPause() {
@@ -217,12 +229,20 @@ class AudioPlayer(context: Context) {
     fun skipToNext() {
         if (player.hasNextMediaItem()) {
             player.seekToNextMediaItem()
+        } else if (player.mediaItemCount > 0) {
+            player.seekToDefaultPosition(0)
+            player.play()
         }
     }
     
     fun skipToPrevious() {
-        if (player.hasPreviousMediaItem()) {
+        if (player.currentPosition > 3000L) {
+            player.seekTo(0L)
+        } else if (player.hasPreviousMediaItem()) {
             player.seekToPreviousMediaItem()
+        } else if (player.mediaItemCount > 0) {
+            player.seekToDefaultPosition(player.mediaItemCount - 1)
+            player.play()
         }
     }
     
@@ -245,6 +265,7 @@ class AudioPlayer(context: Context) {
     }
     
     fun release() {
+        equalizerManager.release()
         controllerFuture?.let { MediaController.releaseFuture(it) }
         player.release()
         stopProgressTracker()

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,7 +57,7 @@ fun PlaylistDetailScreen(
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     val allTracks by viewModel.allTracks.collectAsStateWithLifecycle()
     var trackToAdd by remember { mutableStateOf<Track?>(null) }
-    var showAddSongsSheet by remember { mutableStateOf(false) }
+    var showAddSongsSheet by rememberSaveable { mutableStateOf(false) }
 
     val artworkUris = remember(tracks) {
         tracks.mapNotNull { it.albumArtUri }.take(4)
@@ -254,7 +255,7 @@ fun AddSongsToPlaylistSheet(
     onAddTrack: (Long) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     val filteredTracks = remember(allTracks, searchQuery) {
         if (searchQuery.isBlank()) {
             allTracks

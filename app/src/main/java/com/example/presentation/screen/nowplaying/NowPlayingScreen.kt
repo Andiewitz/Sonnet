@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.*
@@ -66,6 +68,7 @@ fun NowPlayingScreen(
     
     val duration = track?.durationMs ?: 1L
     var showAddToPlaylistDialog by remember { mutableStateOf(false) }
+    var showEqualizer by remember { mutableStateOf(false) }
 
     // Dynamic color simulation based on track id
     val targetBgColor = remember(track?.id) {
@@ -108,8 +111,16 @@ fun NowPlayingScreen(
                 color = TextSecondary,
                 style = MaterialTheme.typography.labelSmall
             )
-            IconButton(onClick = { showAddToPlaylistDialog = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = TextPrimary)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { showEqualizer = true }) {
+                    com.example.presentation.component.EqualizerIcon(
+                        tint = AccentPrimary,
+                        size = 22.dp
+                    )
+                }
+                IconButton(onClick = { showAddToPlaylistDialog = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = TextPrimary)
+                }
             }
         }
         
@@ -354,6 +365,13 @@ fun NowPlayingScreen(
         com.example.presentation.component.AddToPlaylistDialog(
             track = track!!,
             onDismiss = { showAddToPlaylistDialog = false }
+        )
+    }
+
+    if (showEqualizer) {
+        com.example.presentation.component.EqualizerBottomSheet(
+            equalizerManager = appContainer.audioPlayer.equalizerManager,
+            onDismiss = { showEqualizer = false }
         )
     }
 }
