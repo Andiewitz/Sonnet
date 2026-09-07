@@ -2,11 +2,13 @@ package com.example.player
 
 import android.content.ComponentName
 import android.content.Context
+import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.example.data.datastore.UserPreferencesDataStore
 import com.example.domain.model.Track
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
@@ -16,11 +18,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-class AudioPlayer(context: Context) {
-    val equalizerManager = EqualizerManager()
+class AudioPlayer(
+    context: Context,
+    val userPreferencesDataStore: UserPreferencesDataStore
+) {
+    private val scope = CoroutineScope(Dispatchers.Main)
+    val equalizerManager = EqualizerManager(userPreferencesDataStore, scope)
+
+    private var loudnessEnhancer: android.media.audiofx.LoudnessEnhancer? = null
+    private var isNormalizeVolume = false
 
     val player = ExoPlayer.Builder(context)
         .setAudioAttributes(
@@ -115,7 +125,6 @@ class AudioPlayer(context: Context) {
     val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
     
     private var progressJob: Job? = null
-    private val scope = CoroutineScope(Dispatchers.Main)
     
     private var playlist: List<Track> = emptyList()
     var onTrackPlayed: ((Long) -> Unit)? = null
@@ -125,6 +134,24 @@ class AudioPlayer(context: Context) {
     init {
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
+
+        // Restore saved player preferences
+        scope.launch {
+            try {
+                val savedShuffle = userPreferencesDataStore.shuffleMode.first()
+                player.shuffleModeEnabled = savedShuffle
+                _shuffleModeEnabled.value = savedShuffle
+
+                val savedRepeat = userPreferencesDataStore.repeatMode.first()
+                player.repeatMode = savedRepeat
+                _repeatMode.value = savedRepeat
+
+                val savedNormalize = userPreferencesDataStore.isNormalizeVolume.first()
+                setNormalizeVolume(savedNormalize)
+            } catch (e: Exception) {
+                Log.e("AudioPlayer", "Error loading saved preferences: ${e.message}")
+            }
+        }
 
         player.addListener(object : Player.Listener {
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -145,6 +172,7 @@ class AudioPlayer(context: Context) {
                     val sessionId = player.audioSessionId
                     if (sessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
                         equalizerManager.bindAudioSession(sessionId)
+                        bindLoudnessEnhancer(sessionId)
                     }
                     startProgressTracker()
                 } else {
@@ -165,12 +193,57 @@ class AudioPlayer(context: Context) {
 
             override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
                 _shuffleModeEnabled.value = shuffleModeEnabled
+                scope.launch {
+                    try {
+                        userPreferencesDataStore.setShuffleMode(shuffleModeEnabled)
+                    } catch (e: Exception) {
+                        Log.e("AudioPlayer", "Error saving shuffle mode: ${e.message}")
+                    }
+                }
             }
 
             override fun onRepeatModeChanged(repeatMode: Int) {
                 _repeatMode.value = repeatMode
+                scope.launch {
+                    try {
+                        userPreferencesDataStore.setRepeatMode(repeatMode)
+                    } catch (e: Exception) {
+                        Log.e("AudioPlayer", "Error saving repeat mode: ${e.message}")
+                    }
+                }
             }
         })
+    }
+
+    fun setNormalizeVolume(enabled: Boolean) {
+        isNormalizeVolume = enabled
+        try {
+            loudnessEnhancer?.enabled = enabled
+            if (enabled) {
+                loudnessEnhancer?.setTargetGain(0)
+            }
+        } catch (e: Exception) {
+            Log.e("AudioPlayer", "Error setting normalize volume: ${e.message}")
+        }
+    }
+
+    fun setGaplessPlayback(enabled: Boolean) {
+        // Gapless playback is natively supported by ExoPlayer playlist transitions
+    }
+
+    private fun bindLoudnessEnhancer(audioSessionId: Int) {
+        if (audioSessionId <= 0) return
+        try {
+            loudnessEnhancer?.release()
+            loudnessEnhancer = android.media.audiofx.LoudnessEnhancer(audioSessionId).apply {
+                enabled = isNormalizeVolume
+                if (isNormalizeVolume) {
+                    setTargetGain(0)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("AudioPlayer", "Error binding LoudnessEnhancer: ${e.message}")
+        }
     }
     
     fun setPlaylist(tracks: List<Track>, startIndex: Int = 0) {
@@ -266,6 +339,8 @@ class AudioPlayer(context: Context) {
     
     fun release() {
         equalizerManager.release()
+        loudnessEnhancer?.release()
+        loudnessEnhancer = null
         controllerFuture?.let { MediaController.releaseFuture(it) }
         player.release()
         stopProgressTracker()

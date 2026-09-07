@@ -156,7 +156,7 @@ fun EqualizerBottomSheet(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        items(EqualizerPreset.values()) { preset ->
+                        items(EqualizerPreset.entries) { preset ->
                             val isSelected = isEnabled && (currentPreset == preset)
                             val bg by animateColorAsState(
                                 targetValue = if (isSelected) AccentPrimary else BgTertiary,
@@ -336,8 +336,11 @@ fun EqualizerBottomSheet(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     // Gain readout
-                                    val dbValue = (gain / 10f)
-                                    val formattedDb = if (dbValue > 0) "+${dbValue.toInt()}dB" else "${dbValue.toInt()}dB"
+                                    val formattedDb = when {
+                                        gain == 0 -> "0 dB"
+                                        gain % 10 == 0 -> "${if (gain > 0) "+" else ""}${gain / 10} dB"
+                                        else -> "${if (gain > 0) "+" else ""}${String.format(java.util.Locale.US, "%.1f", gain / 10f)} dB"
+                                    }
                                     Text(
                                         text = formattedDb,
                                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),

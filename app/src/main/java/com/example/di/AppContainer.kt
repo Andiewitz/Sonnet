@@ -21,14 +21,14 @@ import kotlinx.coroutines.launch
 class AppContainer(private val context: Context) {
     val database = Room.databaseBuilder(context, AppDatabase::class.java, "sonnet_db").build()
     
-    val audioPlayer = AudioPlayer(context)
+    val userPreferencesDataStore = UserPreferencesDataStore(context)
+    val audioPlayer = AudioPlayer(context, userPreferencesDataStore)
     
     val trackDao = database.trackDao()
     val playlistDao = database.playlistDao()
     val playHistoryDao = database.playHistoryDao()
     
     val mediaStoreScanner = MediaStoreScanner(context)
-    val userPreferencesDataStore = UserPreferencesDataStore(context)
     
     val trackRepository = TrackRepositoryImpl(trackDao, mediaStoreScanner)
     val playlistRepository = PlaylistRepositoryImpl(playlistDao)

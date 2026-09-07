@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -18,16 +19,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.presentation.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(navController: NavController) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val appContainer = (context.applicationContext as com.example.SonnetApplication).container
-    var isGaplessPlayback by remember { mutableStateOf(true) }
-    var isNormalizeVolume by remember { mutableStateOf(false) }
-    var isHighQualityAudio by remember { mutableStateOf(true) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val isHighQualityAudio by appContainer.userPreferencesDataStore.isHighQualityAudio
+        .collectAsStateWithLifecycle(initialValue = true)
+    val isGaplessPlayback by appContainer.userPreferencesDataStore.isGaplessPlayback
+        .collectAsStateWithLifecycle(initialValue = true)
+    val isNormalizeVolume by appContainer.userPreferencesDataStore.isNormalizeVolume
+        .collectAsStateWithLifecycle(initialValue = false)
     var showEqualizer by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -86,7 +94,11 @@ fun SettingsScreen(navController: NavController) {
                     title = "High Quality Audio",
                     subtitle = "Stream and playback at highest fidelity",
                     checked = isHighQualityAudio,
-                    onCheckedChange = { isHighQualityAudio = it }
+                    onCheckedChange = { checked ->
+                        coroutineScope.launch {
+                            appContainer.userPreferencesDataStore.setHighQualityAudio(checked)
+                        }
+                    }
                 )
             }
 
@@ -96,17 +108,27 @@ fun SettingsScreen(navController: NavController) {
                     title = "Gapless Playback",
                     subtitle = "Seamlessly transition between album tracks",
                     checked = isGaplessPlayback,
-                    onCheckedChange = { isGaplessPlayback = it }
+                    onCheckedChange = { checked ->
+                        coroutineScope.launch {
+                            appContainer.userPreferencesDataStore.setGaplessPlayback(checked)
+                            appContainer.audioPlayer.setGaplessPlayback(checked)
+                        }
+                    }
                 )
             }
 
             item {
                 SettingsSwitchRow(
-                    icon = Icons.Outlined.VolumeUp,
+                    icon = Icons.AutoMirrored.Outlined.VolumeUp,
                     title = "Normalize Volume",
                     subtitle = "Keep constant loudness across different tracks",
                     checked = isNormalizeVolume,
-                    onCheckedChange = { isNormalizeVolume = it }
+                    onCheckedChange = { checked ->
+                        coroutineScope.launch {
+                            appContainer.userPreferencesDataStore.setNormalizeVolume(checked)
+                            appContainer.audioPlayer.setNormalizeVolume(checked)
+                        }
+                    }
                 )
             }
 
