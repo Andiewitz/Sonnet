@@ -1,6 +1,10 @@
 package com.example.presentation.component
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +32,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.player.EqualizerManager
 import com.example.player.EqualizerPreset
 import com.example.presentation.theme.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun EqualizerBottomSheet(
@@ -41,26 +47,58 @@ fun EqualizerBottomSheet(
     val bandGains by equalizerManager.bandGains.collectAsStateWithLifecycle()
     val bandFrequencies by equalizerManager.bandFrequencyLabels.collectAsStateWithLifecycle()
 
+    var isVisible by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+
+    fun dismissWithAnimation() {
+        coroutineScope.launch {
+            isVisible = false
+            delay(240)
+            onDismiss()
+        }
+    }
+
+    val scrimAlpha by animateFloatAsState(
+        targetValue = if (isVisible) 0.65f else 0f,
+        animationSpec = tween(240),
+        label = "scrim_alpha"
+    )
+
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { dismissWithAnimation() },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.65f))
-                .clickable(onClick = onDismiss),
+                .background(Color.Black.copy(alpha = scrimAlpha))
+                .clickable(onClick = { dismissWithAnimation() }),
             contentAlignment = Alignment.BottomCenter
         ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.85f)
-                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                    .clickable(enabled = false) {}, // consume clicks inside sheet
-                color = BgSecondary,
-                tonalElevation = 8.dp
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = spring(dampingRatio = 0.86f, stiffness = 380f)
+                ) + fadeIn(tween(180)),
+                exit = slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(240, easing = FastOutSlowInEasing)
+                ) + fadeOut(tween(180))
             ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.85f)
+                        .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                        .clickable(enabled = false) {}, // consume clicks inside sheet
+                    color = BgSecondary,
+                    tonalElevation = 8.dp
+                ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -125,7 +163,7 @@ fun EqualizerBottomSheet(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             IconButton(
-                                onClick = onDismiss,
+                                onClick = { dismissWithAnimation() },
                                 modifier = Modifier
                                     .size(32.dp)
                                     .background(BgTertiary, CircleShape)
@@ -384,4 +422,5 @@ fun EqualizerBottomSheet(
             }
         }
     }
+}
 }

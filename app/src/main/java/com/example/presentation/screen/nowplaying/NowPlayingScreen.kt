@@ -1,11 +1,20 @@
 package com.example.presentation.screen.nowplaying
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -33,13 +42,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.SonnetApplication
 import com.example.presentation.component.AlbumArt
 import com.example.presentation.theme.*
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,86 +97,189 @@ fun NowPlayingScreen(
         label = "bg_color_animation"
     )
 
-    Column(
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+    val dismissThresholdPx = with(density) { 130.dp.toPx() }
+    val dragOffsetY = remember { Animatable(0f) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val dynamicCornerRadius by remember {
+        derivedStateOf {
+            val progress = (dragOffsetY.value / dismissThresholdPx).coerceIn(0f, 1f)
+            (progress * 28).dp
+        }
+    }
+    val dynamicScale by remember {
+        derivedStateOf {
+            val progress = (dragOffsetY.value / (dismissThresholdPx * 2f)).coerceIn(0f, 1f)
+            1f - (progress * 0.05f)
+        }
+    }
+
+    val dragDismissModifier = Modifier.pointerInput(Unit) {
+        detectVerticalDragGestures(
+            onDragEnd = {
+                coroutineScope.launch {
+                    if (dragOffsetY.value > dismissThresholdPx) {
+                        dragOffsetY.animateTo(
+                            screenHeightPx,
+                            tween(220, easing = FastOutLinearInEasing)
+                        )
+                        onBackClick()
+                    } else {
+                        dragOffsetY.animateTo(
+                            0f,
+                            spring(
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            )
+                        )
+                    }
+                }
+            },
+            onDragCancel = {
+                coroutineScope.launch {
+                    dragOffsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                }
+            },
+            onVerticalDrag = { change, dragAmount ->
+                if (dragAmount > 0 || dragOffsetY.value > 0) {
+                    change.consume()
+                    val newOffset = (dragOffsetY.value + dragAmount).coerceAtLeast(0f)
+                    coroutineScope.launch {
+                        dragOffsetY.snapTo(newOffset)
+                    }
+                }
+            }
+        )
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                    colors = listOf(animatedBgColor, BgPrimary),
-                    startY = 0f,
-                    endY = 1000f
-                )
-            )
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(BgPrimary)
+            .offset { IntOffset(0, dragOffsetY.value.roundToInt().coerceAtLeast(0)) }
+            .graphicsLayer {
+                scaleX = dynamicScale
+                scaleY = dynamicScale
+            }
+            .clip(RoundedCornerShape(topStart = dynamicCornerRadius, topEnd = dynamicCornerRadius))
     ) {
-        // Top Bar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBackClick) {
-                Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Minimize", tint = TextPrimary)
-            }
-            Text(
-                text = "NOW PLAYING",
-                color = TextSecondary,
-                style = MaterialTheme.typography.labelSmall
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { showEqualizer = true }) {
-                    com.example.presentation.component.EqualizerIcon(
-                        tint = AccentPrimary,
-                        size = 22.dp
-                    )
-                }
-                IconButton(onClick = { showAddToPlaylistDialog = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = TextPrimary)
-                }
-            }
-        }
-        
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Artwork Scale based on playing state (expands when playing, shrinks slightly when paused)
-        val artworkScale by animateFloatAsState(
-            targetValue = if (isPlaying) 1.0f else 0.90f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
-            label = "artwork_scale"
-        )
-
-        // Album Art with Glow
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .graphicsLayer(scaleX = artworkScale, scaleY = artworkScale),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(animatedBgColor, BgPrimary),
+                        startY = 0f,
+                        endY = 1100f
+                    )
+                )
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val glowColor = remember(track?.id) {
-                val hash = track?.artist?.hashCode() ?: 0
-                val hue = (Math.abs(hash) % 360).toFloat()
-                Color.hsv(hue, 0.8f, 0.8f).copy(alpha = 0.18f)
-            }
-            val animatedGlowColor by animateColorAsState(
-                targetValue = glowColor,
-                animationSpec = androidx.compose.animation.core.tween(1000),
-                label = "glow_color_animation"
-            )
-
+            // Drag Pill Handle
             Box(
                 modifier = Modifier
-                    .fillMaxSize(0.85f)
-                    .background(
-                        brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                            colors = listOf(animatedGlowColor, Color.Transparent)
-                        ),
-                        shape = CircleShape
-                    )
+                    .padding(top = 2.dp, bottom = 8.dp)
+                    .width(42.dp)
+                    .height(4.5.dp)
+                    .clip(CircleShape)
+                    .background(TextTertiary.copy(alpha = 0.45f))
+                    .then(dragDismissModifier)
             )
+
+            // Top Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(dragDismissModifier),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBackClick) {
+                    Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Minimize", tint = TextPrimary)
+                }
+                Text(
+                    text = "NOW PLAYING",
+                    color = TextSecondary,
+                    style = MaterialTheme.typography.labelSmall
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { showEqualizer = true }) {
+                        com.example.presentation.component.EqualizerIcon(
+                            tint = AccentPrimary,
+                            size = 22.dp
+                        )
+                    }
+                    IconButton(onClick = { showAddToPlaylistDialog = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = TextPrimary)
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Artwork Scale based on playing state (expands when playing, shrinks slightly when paused)
+            val artworkScale by animateFloatAsState(
+                targetValue = if (isPlaying) 1.0f else 0.90f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+                label = "artwork_scale"
+            )
+
+            // Album Art with Breathing Glow
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .graphicsLayer(scaleX = artworkScale, scaleY = artworkScale)
+                    .then(dragDismissModifier),
+                contentAlignment = Alignment.Center
+            ) {
+                val glowColor = remember(track?.id) {
+                    val hash = track?.artist?.hashCode() ?: 0
+                    val hue = (Math.abs(hash) % 360).toFloat()
+                    Color.hsv(hue, 0.8f, 0.8f).copy(alpha = 0.22f)
+                }
+                val animatedGlowColor by animateColorAsState(
+                    targetValue = glowColor,
+                    animationSpec = androidx.compose.animation.core.tween(1000),
+                    label = "glow_color_animation"
+                )
+
+                val infiniteTransition = rememberInfiniteTransition(label = "ambient_glow_pulse")
+                val glowPulseScale by infiniteTransition.animateFloat(
+                    initialValue = 0.82f,
+                    targetValue = if (isPlaying) 0.98f else 0.82f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(2600, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "glow_pulse"
+                )
+                val glowAlpha by infiniteTransition.animateFloat(
+                    initialValue = 0.14f,
+                    targetValue = if (isPlaying) 0.32f else 0.14f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(2600, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "glow_alpha"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(glowPulseScale)
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                colors = listOf(animatedGlowColor.copy(alpha = glowAlpha), Color.Transparent)
+                            ),
+                            shape = CircleShape
+                        )
+                )
             
             Crossfade(
                 targetState = track?.albumArtUri,
@@ -305,7 +423,8 @@ fun NowPlayingScreen(
                 AnimatedContent(
                     targetState = isPlaying,
                     transitionSpec = {
-                        fadeIn() + scaleIn() togetherWith fadeOut() + scaleOut()
+                        (scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) + fadeIn(tween(140)))
+                            .togetherWith(scaleOut(tween(90)) + fadeOut(tween(90)))
                     },
                     label = "play_pause_icon"
                 ) { playing ->
@@ -355,6 +474,7 @@ fun NowPlayingScreen(
         
         Spacer(modifier = Modifier.weight(0.5f))
     }
+    } // Closes outer Box
 
     if (showAddToPlaylistDialog && track != null) {
         com.example.presentation.component.AddToPlaylistDialog(
@@ -377,20 +497,32 @@ fun NowPlayingProgressBar(
     viewModel: NowPlayingViewModel
 ) {
     val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
-    val sliderPosition by remember(duration) { 
+    val playbackFraction by remember(duration, currentPosition) { 
         derivedStateOf { if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f }
     }
     
+    var isScrubbing by remember { mutableStateOf(false) }
+    var scrubFraction by remember { mutableFloatStateOf(0f) }
+
+    val activeFraction = if (isScrubbing) scrubFraction else playbackFraction
+
     val animatedProgress by animateFloatAsState(
-        targetValue = sliderPosition,
-        animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.LinearEasing),
+        targetValue = activeFraction,
+        animationSpec = if (isScrubbing) spring(stiffness = Spring.StiffnessHigh) else tween(120, easing = androidx.compose.animation.core.LinearEasing),
         label = "progress_bar_animation"
     )
 
     Column {
         Slider(
             value = animatedProgress,
-            onValueChange = { viewModel.seekTo((it * duration).toLong()) },
+            onValueChange = {
+                isScrubbing = true
+                scrubFraction = it
+            },
+            onValueChangeFinished = {
+                viewModel.seekTo((scrubFraction * duration).toLong())
+                isScrubbing = false
+            },
             colors = SliderDefaults.colors(
                 thumbColor = TextPrimary,
                 activeTrackColor = AccentPrimary,
@@ -402,8 +534,9 @@ fun NowPlayingProgressBar(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            val currSeconds = (currentPosition / 1000) % 60
-            val currMinutes = (currentPosition / 1000) / 60
+            val displayMs = if (isScrubbing) (scrubFraction * duration).toLong() else currentPosition
+            val currSeconds = (displayMs / 1000) % 60
+            val currMinutes = (displayMs / 1000) / 60
             val durSeconds = (duration / 1000) % 60
             val durMinutes = (duration / 1000) / 60
             Text(String.format("%d:%02d", currMinutes, currSeconds), color = TextTertiary, style = MaterialTheme.typography.labelMedium)

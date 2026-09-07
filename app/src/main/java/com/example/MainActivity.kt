@@ -9,7 +9,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -116,6 +119,9 @@ class MainActivity : ComponentActivity() {
                         .fillMaxSize()
                         .background(BgPrimary)
                 ) {
+                    val EmphasizedDecelerateEasing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
+                    val EmphasizedAccelerateEasing = CubicBezierEasing(0.3f, 0.0f, 0.8f, 0.15f)
+
                     NavHost(
                         navController = navController,
                         startDestination = "home",
@@ -128,17 +134,18 @@ class MainActivity : ComponentActivity() {
                             if (targetRoute.startsWith("now_playing")) {
                                 slideInVertically(
                                     initialOffsetY = { it },
-                                    animationSpec = tween(280, easing = FastOutSlowInEasing)
-                                ) + fadeIn(animationSpec = tween(200))
+                                    animationSpec = tween(440, easing = EmphasizedDecelerateEasing)
+                                ) + fadeIn(animationSpec = tween(260))
                             } else if (initialRoute.startsWith("now_playing")) {
                                 EnterTransition.None
                             } else if (isTabSwitch) {
-                                fadeIn(animationSpec = tween(120))
+                                fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
+                                        scaleIn(initialScale = 0.98f, animationSpec = tween(220, easing = LinearOutSlowInEasing))
                             } else {
-                                fadeIn(animationSpec = tween(140)) +
+                                fadeIn(animationSpec = tween(260)) +
                                         slideInHorizontally(
-                                            initialOffsetX = { 60 },
-                                            animationSpec = tween(180, easing = FastOutSlowInEasing)
+                                            initialOffsetX = { (it * 0.25f).toInt() },
+                                            animationSpec = tween(360, easing = EmphasizedDecelerateEasing)
                                         )
                             }
                         },
@@ -149,19 +156,20 @@ class MainActivity : ComponentActivity() {
                                     (targetRoute in listOf("home", "library", "search", "settings"))
 
                             if (targetRoute.startsWith("now_playing")) {
-                                slideOutVertically(
-                                    targetOffsetY = { 40 },
-                                    animationSpec = tween(280, easing = FastOutSlowInEasing)
-                                ) + fadeOut(animationSpec = tween(180))
+                                scaleOut(
+                                    targetScale = 0.93f,
+                                    animationSpec = tween(440, easing = EmphasizedDecelerateEasing)
+                                ) + fadeOut(animationSpec = tween(300))
                             } else if (initialRoute.startsWith("now_playing")) {
                                 ExitTransition.None
                             } else if (isTabSwitch) {
-                                fadeOut(animationSpec = tween(100))
+                                fadeOut(animationSpec = tween(160, easing = FastOutLinearInEasing)) +
+                                        scaleOut(targetScale = 0.98f, animationSpec = tween(160, easing = FastOutLinearInEasing))
                             } else {
-                                fadeOut(animationSpec = tween(140)) +
+                                fadeOut(animationSpec = tween(200)) +
                                         slideOutHorizontally(
-                                            targetOffsetX = { -60 },
-                                            animationSpec = tween(180, easing = FastOutSlowInEasing)
+                                            targetOffsetX = { -(it * 0.15f).toInt() },
+                                            animationSpec = tween(360, easing = EmphasizedDecelerateEasing)
                                         )
                             }
                         },
@@ -172,17 +180,18 @@ class MainActivity : ComponentActivity() {
                                     (targetRoute in listOf("home", "library", "search", "settings"))
 
                             if (initialRoute.startsWith("now_playing")) {
-                                slideInVertically(
-                                    initialOffsetY = { 40 },
-                                    animationSpec = tween(280, easing = FastOutSlowInEasing)
-                                ) + fadeIn(animationSpec = tween(180))
+                                scaleIn(
+                                    initialScale = 0.93f,
+                                    animationSpec = tween(380, easing = EmphasizedDecelerateEasing)
+                                ) + fadeIn(animationSpec = tween(320))
                             } else if (isTabSwitch) {
-                                fadeIn(animationSpec = tween(120))
+                                fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
+                                        scaleIn(initialScale = 0.98f, animationSpec = tween(220, easing = LinearOutSlowInEasing))
                             } else {
-                                fadeIn(animationSpec = tween(140)) +
+                                fadeIn(animationSpec = tween(260)) +
                                         slideInHorizontally(
-                                            initialOffsetX = { -60 },
-                                            animationSpec = tween(180, easing = FastOutSlowInEasing)
+                                            initialOffsetX = { -(it * 0.15f).toInt() },
+                                            animationSpec = tween(360, easing = EmphasizedDecelerateEasing)
                                         )
                             }
                         },
@@ -195,15 +204,16 @@ class MainActivity : ComponentActivity() {
                             if (initialRoute.startsWith("now_playing")) {
                                 slideOutVertically(
                                     targetOffsetY = { it },
-                                    animationSpec = tween(280, easing = FastOutSlowInEasing)
-                                ) + fadeOut(animationSpec = tween(200))
+                                    animationSpec = tween(380, easing = EmphasizedAccelerateEasing)
+                                ) + fadeOut(animationSpec = tween(240))
                             } else if (isTabSwitch) {
-                                fadeOut(animationSpec = tween(100))
+                                fadeOut(animationSpec = tween(160, easing = FastOutLinearInEasing)) +
+                                        scaleOut(targetScale = 0.98f, animationSpec = tween(160, easing = FastOutLinearInEasing))
                             } else {
-                                fadeOut(animationSpec = tween(140)) +
+                                fadeOut(animationSpec = tween(220)) +
                                         slideOutHorizontally(
-                                            targetOffsetX = { 60 },
-                                            animationSpec = tween(180, easing = FastOutSlowInEasing)
+                                            targetOffsetX = { (it * 0.25f).toInt() },
+                                            animationSpec = tween(360, easing = EmphasizedDecelerateEasing)
                                         )
                             }
                         }
@@ -278,11 +288,11 @@ class MainActivity : ComponentActivity() {
                         visible = !isNowPlaying,
                         enter = slideInVertically(
                             initialOffsetY = { it },
-                            animationSpec = tween(300, easing = FastOutSlowInEasing)
-                        ) + fadeIn(tween(200)),
+                            animationSpec = tween(400, easing = EmphasizedDecelerateEasing)
+                        ) + fadeIn(tween(260)),
                         exit = slideOutVertically(
                             targetOffsetY = { it },
-                            animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            animationSpec = tween(340, easing = EmphasizedAccelerateEasing)
                         ) + fadeOut(tween(200)),
                         modifier = Modifier.align(Alignment.BottomCenter)
                     ) {
@@ -297,8 +307,14 @@ class MainActivity : ComponentActivity() {
 
                             AnimatedVisibility(
                                 visible = showBottomBar,
-                                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(200)),
-                                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(tween(200))
+                                enter = slideInVertically(
+                                    initialOffsetY = { it },
+                                    animationSpec = tween(340, easing = EmphasizedDecelerateEasing)
+                                ) + fadeIn(tween(220)),
+                                exit = slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(280, easing = EmphasizedAccelerateEasing)
+                                ) + fadeOut(tween(180))
                             ) {
                                 com.example.presentation.component.AppBottomNavigationBar(navController = navController)
                             }
@@ -326,11 +342,20 @@ fun MainMiniPlayer(
     val isPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
     val currentPosition by audioPlayer.currentPosition.collectAsStateWithLifecycle()
 
+    val EmphasizedDecelerateEasing = remember { CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f) }
+    val EmphasizedAccelerateEasing = remember { CubicBezierEasing(0.3f, 0.0f, 0.8f, 0.15f) }
+
     AnimatedVisibility(
         visible = showMiniPlayer && currentTrack != null,
         modifier = modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(200)),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(tween(200))
+        enter = slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = tween(360, easing = EmphasizedDecelerateEasing)
+        ) + fadeIn(tween(240)),
+        exit = slideOutVertically(
+            targetOffsetY = { it },
+            animationSpec = tween(300, easing = EmphasizedAccelerateEasing)
+        ) + fadeOut(tween(180))
     ) {
         currentTrack?.let { track ->
             com.example.presentation.component.MiniPlayer(
