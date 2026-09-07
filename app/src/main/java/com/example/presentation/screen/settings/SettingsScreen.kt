@@ -151,7 +151,19 @@ fun SettingsScreen(navController: NavController) {
                     icon = Icons.Outlined.Refresh,
                     title = "Rescan Media",
                     subtitle = "Scan device storage for new songs and albums",
-                    onClick = { /* trigger scan */ }
+                    onClick = {
+                        coroutineScope.launch {
+                            try {
+                                android.widget.Toast.makeText(context, "Scanning for songs...", android.widget.Toast.LENGTH_SHORT).show()
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                    appContainer.trackRepository.scanDeviceForTracks()
+                                }
+                                android.widget.Toast.makeText(context, "Media library updated", android.widget.Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                android.widget.Toast.makeText(context, "Scan failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
                 )
             }
 

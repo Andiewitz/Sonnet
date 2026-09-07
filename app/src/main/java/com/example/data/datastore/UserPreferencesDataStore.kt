@@ -50,7 +50,14 @@ class UserPreferencesDataStore(
     val isGaplessPlayback: Flow<Boolean> = safeDataFlow.map { it[GAPLESS_PLAYBACK] ?: true }
     val isNormalizeVolume: Flow<Boolean> = safeDataFlow.map { it[NORMALIZE_VOLUME] ?: false }
     val shuffleMode: Flow<Boolean> = safeDataFlow.map { it[SHUFFLE_MODE] ?: false }
-    val repeatMode: Flow<Int> = safeDataFlow.map { it[REPEAT_MODE] ?: 0 }
+    val repeatMode: Flow<Int> = safeDataFlow.map { prefs ->
+        val saved = prefs[REPEAT_MODE]
+        if (saved == androidx.media3.common.Player.REPEAT_MODE_ONE) {
+            androidx.media3.common.Player.REPEAT_MODE_ONE
+        } else {
+            androidx.media3.common.Player.REPEAT_MODE_ALL
+        }
+    }
 
     val equalizerEnabled: Flow<Boolean> = safeDataFlow.map { it[EQUALIZER_ENABLED] ?: true }
     val equalizerPreset: Flow<String> = safeDataFlow.map { it[EQUALIZER_PRESET] ?: "FLAT" }
@@ -87,7 +94,12 @@ class UserPreferencesDataStore(
     }
 
     suspend fun setRepeatMode(mode: Int) {
-        context.dataStore.edit { it[REPEAT_MODE] = mode }
+        val sanitizedMode = if (mode == androidx.media3.common.Player.REPEAT_MODE_ONE) {
+            androidx.media3.common.Player.REPEAT_MODE_ONE
+        } else {
+            androidx.media3.common.Player.REPEAT_MODE_ALL
+        }
+        context.dataStore.edit { it[REPEAT_MODE] = sanitizedMode }
     }
 
     suspend fun saveEqualizerSettings(

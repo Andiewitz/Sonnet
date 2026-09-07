@@ -1,5 +1,8 @@
 package com.example.player
 
+import android.content.Context
+import android.content.Intent
+import android.media.audiofx.AudioEffect
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
 import android.media.audiofx.Virtualizer
@@ -16,23 +19,24 @@ import kotlinx.coroutines.withContext
 @Suppress("DEPRECATION")
 enum class EqualizerPreset(
     val displayName: String,
-    val bassStrength: Short,     // 0 to 1000 (hardware effect strength)
+    val bassStrength: Short,        // 0 to 1000 (hardware effect strength)
     val virtualizerStrength: Short, // 0 to 1000 (3D / spatializer strength)
-    val bandGains: List<Int>     // Gains in dB * 10 (-100 to +100 = -10.0dB to +10.0dB) for [60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz]
+    val bandGains: List<Int>        // Gains in dB * 10 (-120 to +120 = -12.0dB to +12.0dB) for [60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz]
 ) {
     FLAT("Flat", 0, 0, listOf(0, 0, 0, 0, 0)),
-    BASS("Bass Boost", 220, 0, listOf(35, -15, 0, 10, 15)), // -1.5dB at 230Hz eliminates boxy mud, +3.5dB at 60Hz gives clean punch
-    ROCK("Rock", 120, 80, listOf(30, 10, -15, 20, 30)),
-    POP("Pop", 100, 90, listOf(15, 5, 20, 25, 20)),
-    VOCAL_BOOST("Vocal Clarity", 0, 60, listOf(-20, -10, 30, 30, 10)), // Removes low rumble & boominess, clarifies voices
-    ELECTRONIC("Electronic", 200, 120, listOf(35, 5, -10, 20, 30)),
-    ACOUSTIC("Acoustic", 0, 80, listOf(15, 10, 10, 15, 25)),
-    THREE_D("3D Surround", 100, 220, listOf(15, 0, 10, 15, 25)), // Controlled 22% spatializer without comb-filtering or hollow phasing
+    BASS("Bass Boost", 800, 150, listOf(90, 50, -20, 20, 40)),       // Rich +9dB sub-bass and 80% hardware BassBoost
+    ROCK("Rock", 450, 300, listOf(70, 30, -35, 55, 80)),             // Classic rock V-curve for heavy riffs & crisp cymbals
+    POP("Pop", 350, 400, listOf(40, 20, 50, 60, 50)),                // Punchy radio presence and bright vocal clarity
+    VOCAL_BOOST("Vocal Clarity", 0, 200, listOf(-60, -30, 70, 85, 40)), // Low cut (-6dB), prominent vocal core (+7 to +8.5dB)
+    ELECTRONIC("Electronic", 850, 450, listOf(100, 50, -30, 50, 90)),// Thunderous 10dB sub kick & sizzling synth highs
+    ACOUSTIC("Acoustic", 250, 350, listOf(40, 35, 15, 50, 70)),      // Natural warm low-end and airy string shimmer
+    THREE_D("3D Surround", 400, 850, listOf(50, 20, 30, 50, 70)),    // Immersive 85% spatial widening & dynamic soundstage
     CUSTOM("Custom", 0, 0, listOf(0, 0, 0, 0, 0))
 }
 
 @Suppress("DEPRECATION")
 class EqualizerManager(
+    private val context: Context,
     private val userPreferencesDataStore: UserPreferencesDataStore,
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 ) {
@@ -52,9 +56,12 @@ class EqualizerManager(
     private val _virtualizerLevel = MutableStateFlow(0) // 0 to 100 % (3D)
     val virtualizerLevel: StateFlow<Int> = _virtualizerLevel.asStateFlow()
 
-    // 5 frequency bands: [60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz] in dB * 10 (-100 to +100)
+    // 5 frequency bands: [60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz] in dB * 10 (-120 to +120)
     private val _bandGains = MutableStateFlow(listOf(0, 0, 0, 0, 0))
     val bandGains: StateFlow<List<Int>> = _bandGains.asStateFlow()
+
+    private val _bandFrequencyLabels = MutableStateFlow(listOf("60 Hz", "230 Hz", "910 Hz", "3.6 kHz", "14 kHz"))
+    val bandFrequencyLabels: StateFlow<List<String>> = _bandFrequencyLabels.asStateFlow()
 
     private var currentAudioSessionId: Int = 0
 
@@ -83,30 +90,69 @@ class EqualizerManager(
 
     fun bindAudioSession(audioSessionId: Int) {
         if (audioSessionId <= 0) return
-        if (currentAudioSessionId == audioSessionId && equalizer != null) return
+        if (currentAudioSessionId == audioSessionId && equalizer != null) {
+            applyAllSettings()
+            return
+        }
 
         release()
         currentAudioSessionId = audioSessionId
 
         try {
-            equalizer = Equalizer(0, audioSessionId).apply {
+            // Inform Android audio framework and DSP of active audio effect session
+            val openIntent = Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION).apply {
+                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId)
+                putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
+                putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+            }
+            context.sendBroadcast(openIntent)
+
+            // Priority 1000 ensures application takes priority over standard system background effects
+            equalizer = Equalizer(1000, audioSessionId).apply {
                 enabled = _isEnabled.value
             }
-            bassBoost = BassBoost(0, audioSessionId).apply {
+            bassBoost = BassBoost(1000, audioSessionId).apply {
                 enabled = _isEnabled.value
                 if (strengthSupported) {
                     setStrength((_bassLevel.value * 10).coerceIn(0, 1000).toShort())
                 }
             }
-            virtualizer = Virtualizer(0, audioSessionId).apply {
+            virtualizer = Virtualizer(1000, audioSessionId).apply {
                 enabled = _isEnabled.value
                 if (strengthSupported) {
                     setStrength((_virtualizerLevel.value * 10).coerceIn(0, 1000).toShort())
                 }
             }
+
+            updateBandFrequencies()
             applyAllSettings()
+            Log.d("EqualizerManager", "Bound audio session $audioSessionId. Eq control=${equalizer?.hasControl()}")
         } catch (e: Exception) {
             Log.e("EqualizerManager", "Error binding audio effects: ${e.message}")
+        }
+    }
+
+    private fun updateBandFrequencies() {
+        val eq = equalizer ?: return
+        try {
+            val count = eq.numberOfBands.toInt()
+            val labels = mutableListOf<String>()
+            for (i in 0 until count) {
+                val centerMhz = eq.getCenterFreq(i.toShort()) // in mHz
+                val hz = centerMhz / 1000
+                val label = if (hz >= 1000) {
+                    val khz = hz / 1000f
+                    if (khz % 1f == 0f) "${khz.toInt()} kHz" else String.format(java.util.Locale.US, "%.1f kHz", khz)
+                } else {
+                    "$hz Hz"
+                }
+                labels.add(label)
+            }
+            if (labels.isNotEmpty()) {
+                _bandFrequencyLabels.value = labels
+            }
+        } catch (e: Exception) {
+            Log.e("EqualizerManager", "Error fetching center frequencies: ${e.message}")
         }
     }
 
@@ -116,6 +162,9 @@ class EqualizerManager(
             equalizer?.enabled = enabled
             bassBoost?.enabled = enabled
             virtualizer?.enabled = enabled
+            if (enabled) {
+                applyAllSettings()
+            }
         } catch (e: Exception) {
             Log.e("EqualizerManager", "Error toggling equalizer: ${e.message}")
         }
@@ -164,7 +213,7 @@ class EqualizerManager(
     fun setBandGain(bandIndex: Int, gain: Int) {
         val current = _bandGains.value.toMutableList()
         if (bandIndex in current.indices) {
-            current[bandIndex] = gain.coerceIn(-100, 100)
+            current[bandIndex] = gain.coerceIn(-120, 120)
             _bandGains.value = current
             checkIfCustom()
             applyBandGains()
@@ -205,15 +254,15 @@ class EqualizerManager(
     private fun applyBandGains() {
         val eq = equalizer ?: return
         try {
-            val minRange = eq.bandLevelRange?.getOrNull(0) ?: -1000
-            val maxRange = eq.bandLevelRange?.getOrNull(1) ?: 1000
+            val minRange = eq.bandLevelRange?.getOrNull(0) ?: -1500
+            val maxRange = eq.bandLevelRange?.getOrNull(1) ?: 1500
 
             val numBands = eq.numberOfBands.toInt()
             val gains = _bandGains.value
 
             for (i in 0 until numBands) {
                 val gainIndex = (i * gains.size / numBands).coerceIn(0, gains.size - 1)
-                val gain = gains[gainIndex] // -100 to +100 (-10.0dB to +10.0dB)
+                val gain = gains[gainIndex] // e.g. -120 to +120 (-12.0dB to +12.0dB)
                 // 1 dB = 100 millibels (mB). So gain * 10 accurately converts dB*10 into millibels.
                 val targetMb = (gain * 10).coerceIn(minRange.toInt(), maxRange.toInt()).toShort()
                 eq.setBandLevel(i.toShort(), targetMb)
@@ -246,6 +295,17 @@ class EqualizerManager(
     }
 
     fun release() {
+        if (currentAudioSessionId > 0) {
+            try {
+                val closeIntent = Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION).apply {
+                    putExtra(AudioEffect.EXTRA_AUDIO_SESSION, currentAudioSessionId)
+                    putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
+                }
+                context.sendBroadcast(closeIntent)
+            } catch (e: Exception) {
+                Log.e("EqualizerManager", "Error broadcasting close session: ${e.message}")
+            }
+        }
         try {
             equalizer?.release()
             bassBoost?.release()

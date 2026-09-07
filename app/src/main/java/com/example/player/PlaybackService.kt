@@ -100,7 +100,7 @@ class PlaybackService : MediaSessionService() {
         val repeatButton = CommandButton.Builder()
             .setSessionCommand(SessionCommand("ACTION_REPEAT", Bundle.EMPTY))
             .setIconResId(repeatIcon)
-            .setDisplayName("Repeat")
+            .setDisplayName(if (session.player.repeatMode == Player.REPEAT_MODE_ONE) "Loop Once" else "Loop All")
             .setEnabled(true)
             .build()
 
@@ -157,10 +157,10 @@ class PlaybackService : MediaSessionService() {
             when (customCommand.customAction) {
                 "ACTION_REPEAT" -> {
                     val player = session.player
-                    val nextMode = when (player.repeatMode) {
-                        Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
-                        Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
-                        else -> Player.REPEAT_MODE_OFF
+                    val nextMode = if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                        Player.REPEAT_MODE_ONE
+                    } else {
+                        Player.REPEAT_MODE_ALL
                     }
                     player.repeatMode = nextMode
                     updateCustomLayout(session)

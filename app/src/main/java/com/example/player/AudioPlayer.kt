@@ -27,7 +27,7 @@ class AudioPlayer(
     val userPreferencesDataStore: UserPreferencesDataStore
 ) {
     private val scope = CoroutineScope(Dispatchers.Main)
-    val equalizerManager = EqualizerManager(userPreferencesDataStore, scope)
+    val equalizerManager = EqualizerManager(context.applicationContext, userPreferencesDataStore, scope)
 
     private var loudnessEnhancer: android.media.audiofx.LoudnessEnhancer? = null
     private var isNormalizeVolume = false
@@ -121,7 +121,7 @@ class AudioPlayer(
     private val _shuffleModeEnabled = MutableStateFlow(false)
     val shuffleModeEnabled: StateFlow<Boolean> = _shuffleModeEnabled.asStateFlow()
 
-    private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
+    private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_ALL)
     val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
     
     private var progressJob: Job? = null
@@ -132,8 +132,27 @@ class AudioPlayer(
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
     init {
+        player.repeatMode = Player.REPEAT_MODE_ALL
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
+
+        val sid = player.audioSessionId
+        if (sid != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET && sid > 0) {
+            equalizerManager.bindAudioSession(sid)
+            bindLoudnessEnhancer(sid)
+        }
+
+        player.addAnalyticsListener(object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+            override fun onAudioSessionIdChanged(
+                eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
+                audioSessionId: Int
+            ) {
+                if (audioSessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET && audioSessionId > 0) {
+                    equalizerManager.bindAudioSession(audioSessionId)
+                    bindLoudnessEnhancer(audioSessionId)
+                }
+            }
+        })
 
         // Restore saved player preferences
         scope.launch {
@@ -143,8 +162,13 @@ class AudioPlayer(
                 _shuffleModeEnabled.value = savedShuffle
 
                 val savedRepeat = userPreferencesDataStore.repeatMode.first()
-                player.repeatMode = savedRepeat
-                _repeatMode.value = savedRepeat
+                val effectiveRepeat = if (savedRepeat == Player.REPEAT_MODE_ONE) {
+                    Player.REPEAT_MODE_ONE
+                } else {
+                    Player.REPEAT_MODE_ALL
+                }
+                player.repeatMode = effectiveRepeat
+                _repeatMode.value = effectiveRepeat
 
                 val savedNormalize = userPreferencesDataStore.isNormalizeVolume.first()
                 setNormalizeVolume(savedNormalize)
@@ -154,6 +178,22 @@ class AudioPlayer(
         }
 
         player.addListener(object : Player.Listener {
+            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                super.onTracksChanged(tracks)
+                val currentSid = player.audioSessionId
+                if (currentSid != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET && currentSid > 0) {
+                    equalizerManager.bindAudioSession(currentSid)
+                }
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                super.onPlaybackStateChanged(playbackState)
+                val currentSid = player.audioSessionId
+                if (currentSid != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET && currentSid > 0) {
+                    equalizerManager.bindAudioSession(currentSid)
+                }
+            }
+
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 if (playWhenReady) {
                     if (!requestAudioFocus()) {
@@ -170,7 +210,7 @@ class AudioPlayer(
                 _isPlaying.value = isPlaying
                 if (isPlaying) {
                     val sessionId = player.audioSessionId
-                    if (sessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
+                    if (sessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET && sessionId > 0) {
                         equalizerManager.bindAudioSession(sessionId)
                         bindLoudnessEnhancer(sessionId)
                     }
@@ -203,6 +243,10 @@ class AudioPlayer(
             }
 
             override fun onRepeatModeChanged(repeatMode: Int) {
+                if (repeatMode == Player.REPEAT_MODE_OFF) {
+                    player.repeatMode = Player.REPEAT_MODE_ALL
+                    return
+                }
                 _repeatMode.value = repeatMode
                 scope.launch {
                     try {
@@ -292,10 +336,19 @@ class AudioPlayer(
     }
 
     fun toggleRepeat() {
-        player.repeatMode = when (player.repeatMode) {
-            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-            else -> Player.REPEAT_MODE_OFF
+        val nextMode = if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+            Player.REPEAT_MODE_ONE
+        } else {
+            Player.REPEAT_MODE_ALL
+        }
+        player.repeatMode = nextMode
+        _repeatMode.value = nextMode
+        scope.launch {
+            try {
+                userPreferencesDataStore.setRepeatMode(nextMode)
+            } catch (e: Exception) {
+                Log.e("AudioPlayer", "Error saving repeat mode: ${e.message}")
+            }
         }
     }
     

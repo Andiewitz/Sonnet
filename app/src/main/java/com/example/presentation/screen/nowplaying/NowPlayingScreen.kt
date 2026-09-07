@@ -340,19 +340,14 @@ fun NowPlayingScreen(
                 )
             }
             
-            val repeatIcon = when (repeatMode) {
-                androidx.media3.common.Player.REPEAT_MODE_ONE -> Icons.Filled.RepeatOne
-                else -> Icons.Filled.Repeat
-            }
-            val repeatTint = when (repeatMode) {
-                androidx.media3.common.Player.REPEAT_MODE_OFF -> TextSecondary
-                else -> AccentPrimary
-            }
+            val isLoopOnce = repeatMode == androidx.media3.common.Player.REPEAT_MODE_ONE
+            val repeatIcon = if (isLoopOnce) Icons.Filled.RepeatOne else Icons.Filled.Repeat
+            val repeatDesc = if (isLoopOnce) "Loop Once" else "Loop All"
             IconButton(onClick = { viewModel.toggleRepeat() }) {
                 Icon(
                     imageVector = repeatIcon,
-                    contentDescription = "Repeat",
-                    tint = repeatTint,
+                    contentDescription = repeatDesc,
+                    tint = AccentPrimary,
                     modifier = Modifier.size(24.dp)
                 )
             }

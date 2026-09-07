@@ -39,8 +39,7 @@ fun EqualizerBottomSheet(
     val bassLevel by equalizerManager.bassLevel.collectAsStateWithLifecycle()
     val virtualizerLevel by equalizerManager.virtualizerLevel.collectAsStateWithLifecycle()
     val bandGains by equalizerManager.bandGains.collectAsStateWithLifecycle()
-
-    val bandFrequencies = listOf("60 Hz", "230 Hz", "910 Hz", "3.6 kHz", "14 kHz")
+    val bandFrequencies by equalizerManager.bandFrequencyLabels.collectAsStateWithLifecycle()
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -356,7 +355,7 @@ fun EqualizerBottomSheet(
                                             if (!isEnabled) equalizerManager.setEnabled(true)
                                             equalizerManager.setBandGain(index, newGain.toInt())
                                         },
-                                        valueRange = -100f..100f,
+                                        valueRange = -120f..120f,
                                         modifier = Modifier
                                             .height(110.dp)
                                             .graphicsLayer {
