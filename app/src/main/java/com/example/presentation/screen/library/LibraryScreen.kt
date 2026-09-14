@@ -137,24 +137,6 @@ fun LibraryScreen(
                                 Icon(Icons.Filled.Add, contentDescription = "Add Playlist", tint = TextPrimary, modifier = Modifier.size(20.dp))
                             }
                         }
-                        IconButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    try {
-                                        android.widget.Toast.makeText(context, "Scanning for songs...", android.widget.Toast.LENGTH_SHORT).show()
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                            appContainer.trackRepository.scanDeviceForTracks()
-                                        }
-                                        android.widget.Toast.makeText(context, "Library updated", android.widget.Toast.LENGTH_SHORT).show()
-                                    } catch (e: Exception) {
-                                        android.widget.Toast.makeText(context, "Scan failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            },
-                            modifier = Modifier.size(36.dp).background(BgTertiary, CircleShape)
-                        ) {
-                            Icon(Icons.Outlined.Refresh, contentDescription = "Rescan Media", tint = TextPrimary, modifier = Modifier.size(20.dp))
-                        }
                         IconButton(onClick = { isGridView = !isGridView }, modifier = Modifier.size(36.dp).background(BgTertiary, CircleShape)) {
                             Icon(if (isGridView) Icons.AutoMirrored.Filled.List else Icons.Filled.GridView, contentDescription = "Toggle View", tint = TextPrimary, modifier = Modifier.size(20.dp))
                         }

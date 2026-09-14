@@ -34,7 +34,11 @@ class PlaybackService : MediaSessionService() {
 
         val appContainer = (application as SonnetApplication).container
         val rawPlayer = appContainer.audioPlayer.player
-        val player = AlwaysNavigablePlayer(rawPlayer)
+        val player = AlwaysNavigablePlayer(
+            player = rawPlayer,
+            onNext = { appContainer.audioPlayer.skipToNext() },
+            onPrevious = { appContainer.audioPlayer.skipToPrevious() }
+        )
 
         // PendingIntent to launch/return to the app when notification/media toaster is clicked
         val intent = Intent(this, MainActivity::class.java).apply {
@@ -60,6 +64,24 @@ class PlaybackService : MediaSessionService() {
             .setChannelName(com.example.R.string.playback_channel_name)
             .build()
         setMediaNotificationProvider(notificationProvider)
+
+        appContainer.audioPlayer.onActivePlayerChanged = { newPlayer ->
+            val navigablePlayer = AlwaysNavigablePlayer(
+                player = newPlayer,
+                onNext = { appContainer.audioPlayer.skipToNext() },
+                onPrevious = { appContainer.audioPlayer.skipToPrevious() }
+            )
+            navigablePlayer.addListener(object : Player.Listener {
+                override fun onRepeatModeChanged(repeatMode: Int) {
+                    mediaSession?.let { updateCustomLayout(it) }
+                }
+                override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                    mediaSession?.let { updateCustomLayout(it) }
+                }
+            })
+            mediaSession?.setPlayer(navigablePlayer)
+            mediaSession?.let { updateCustomLayout(it) }
+        }
 
         player.addListener(object : Player.Listener {
             override fun onRepeatModeChanged(repeatMode: Int) {
@@ -154,21 +176,15 @@ class PlaybackService : MediaSessionService() {
             customCommand: SessionCommand,
             args: Bundle
         ): ListenableFuture<SessionResult> {
+            val appContainer = (application as SonnetApplication).container
             when (customCommand.customAction) {
                 "ACTION_REPEAT" -> {
-                    val player = session.player
-                    val nextMode = if (player.repeatMode == Player.REPEAT_MODE_ALL) {
-                        Player.REPEAT_MODE_ONE
-                    } else {
-                        Player.REPEAT_MODE_ALL
-                    }
-                    player.repeatMode = nextMode
+                    appContainer.audioPlayer.toggleRepeat()
                     updateCustomLayout(session)
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 "ACTION_SHUFFLE" -> {
-                    val player = session.player
-                    player.shuffleModeEnabled = !player.shuffleModeEnabled
+                    appContainer.audioPlayer.toggleShuffle()
                     updateCustomLayout(session)
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }

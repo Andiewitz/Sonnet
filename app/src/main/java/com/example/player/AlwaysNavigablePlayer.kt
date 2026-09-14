@@ -3,7 +3,11 @@ package com.example.player
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
 
-class AlwaysNavigablePlayer(player: Player) : ForwardingPlayer(player) {
+class AlwaysNavigablePlayer(
+    player: Player,
+    private val onNext: (() -> Unit)? = null,
+    private val onPrevious: (() -> Unit)? = null
+) : ForwardingPlayer(player) {
 
     override fun getAvailableCommands(): Player.Commands {
         return super.getAvailableCommands().buildUpon()
@@ -24,16 +28,18 @@ class AlwaysNavigablePlayer(player: Player) : ForwardingPlayer(player) {
         }
     }
 
-    override fun hasNextMediaItem(): Boolean = mediaItemCount > 0
+    override fun hasNextMediaItem(): Boolean = true
 
-    override fun hasPreviousMediaItem(): Boolean = mediaItemCount > 0
+    override fun hasPreviousMediaItem(): Boolean = true
 
     override fun seekToNext() {
         seekToNextMediaItem()
     }
 
     override fun seekToNextMediaItem() {
-        if (super.hasNextMediaItem()) {
+        if (onNext != null) {
+            onNext.invoke()
+        } else if (super.hasNextMediaItem()) {
             super.seekToNextMediaItem()
         } else if (mediaItemCount > 0) {
             seekToDefaultPosition(0)
@@ -46,7 +52,9 @@ class AlwaysNavigablePlayer(player: Player) : ForwardingPlayer(player) {
     }
 
     override fun seekToPreviousMediaItem() {
-        if (currentPosition > 3000L) {
+        if (onPrevious != null) {
+            onPrevious.invoke()
+        } else if (currentPosition > 3000L) {
             seekTo(0L)
         } else if (super.hasPreviousMediaItem()) {
             super.seekToPreviousMediaItem()

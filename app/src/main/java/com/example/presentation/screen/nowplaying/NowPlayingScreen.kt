@@ -456,17 +456,17 @@ fun NowPlayingProgressBar(
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubFraction by remember { mutableFloatStateOf(0f) }
 
-    val activeFraction = if (isScrubbing) scrubFraction else playbackFraction
-
-    val animatedProgress by animateFloatAsState(
-        targetValue = activeFraction,
-        animationSpec = if (isScrubbing) spring(stiffness = Spring.StiffnessHigh) else tween(120, easing = androidx.compose.animation.core.LinearEasing),
+    val animatedPlaybackFraction by animateFloatAsState(
+        targetValue = playbackFraction,
+        animationSpec = tween(120, easing = androidx.compose.animation.core.LinearEasing),
         label = "progress_bar_animation"
     )
 
+    val displayedProgress = if (isScrubbing) scrubFraction else animatedPlaybackFraction
+
     Column {
         Slider(
-            value = animatedProgress,
+            value = displayedProgress,
             onValueChange = {
                 isScrubbing = true
                 scrubFraction = it

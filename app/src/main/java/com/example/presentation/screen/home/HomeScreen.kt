@@ -52,6 +52,7 @@ fun HomeScreen(navController: NavController) {
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val recentTracks by viewModel.recentTracks.collectAsStateWithLifecycle()
     val mostPlayedTracks by viewModel.mostPlayedTracks.collectAsStateWithLifecycle()
+    val userName by appContainer.userPreferencesDataStore.userName.collectAsStateWithLifecycle(initialValue = "Andrei")
     var trackToAdd by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<com.example.domain.model.Track?>(null) }
     var showEqualizer by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
@@ -87,7 +88,7 @@ fun HomeScreen(navController: NavController) {
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Andrei",
+                            text = userName,
                             color = TextPrimary,
                             style = MaterialTheme.typography.displayMedium
                         )

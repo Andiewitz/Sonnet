@@ -10,11 +10,12 @@ import coil.util.DebugLogger
 import com.example.di.AppContainer
 
 class SonnetApplication : Application(), ImageLoaderFactory {
-    lateinit var container: AppContainer
+    val container: AppContainer by lazy { AppContainer(this) }
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(this)
+        // Access container on Main Thread to eagerly initialize
+        container
     }
 
     override fun newImageLoader(): ImageLoader {

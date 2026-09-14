@@ -27,6 +27,9 @@ class UserPreferencesDataStore(
         private val NORMALIZE_VOLUME = booleanPreferencesKey("normalize_volume")
         private val SHUFFLE_MODE = booleanPreferencesKey("shuffle_mode")
         private val REPEAT_MODE = intPreferencesKey("repeat_mode")
+        private val CROSSFADE_ENABLED = booleanPreferencesKey("crossfade_enabled")
+        private val CROSSFADE_DURATION_SECONDS = intPreferencesKey("crossfade_duration_seconds")
+        private val USER_NAME = stringPreferencesKey("user_name")
 
         // Equalizer preferences
         private val EQUALIZER_ENABLED = booleanPreferencesKey("equalizer_enabled")
@@ -50,6 +53,9 @@ class UserPreferencesDataStore(
     val isGaplessPlayback: Flow<Boolean> = safeDataFlow.map { it[GAPLESS_PLAYBACK] ?: true }
     val isNormalizeVolume: Flow<Boolean> = safeDataFlow.map { it[NORMALIZE_VOLUME] ?: false }
     val shuffleMode: Flow<Boolean> = safeDataFlow.map { it[SHUFFLE_MODE] ?: false }
+    val crossfadeEnabled: Flow<Boolean> = safeDataFlow.map { it[CROSSFADE_ENABLED] ?: true }
+    val crossfadeDurationSeconds: Flow<Int> = safeDataFlow.map { it[CROSSFADE_DURATION_SECONDS] ?: 4 }
+    val userName: Flow<String> = safeDataFlow.map { it[USER_NAME] ?: "Andrei" }
     val repeatMode: Flow<Int> = safeDataFlow.map { prefs ->
         val saved = prefs[REPEAT_MODE]
         if (saved == androidx.media3.common.Player.REPEAT_MODE_ONE) {
@@ -91,6 +97,19 @@ class UserPreferencesDataStore(
 
     suspend fun setShuffleMode(enabled: Boolean) {
         context.dataStore.edit { it[SHUFFLE_MODE] = enabled }
+    }
+
+    suspend fun setCrossfadeEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[CROSSFADE_ENABLED] = enabled }
+    }
+
+    suspend fun setCrossfadeDurationSeconds(seconds: Int) {
+        context.dataStore.edit { it[CROSSFADE_DURATION_SECONDS] = seconds.coerceIn(1, 12) }
+    }
+
+    suspend fun setUserName(name: String) {
+        val trimmed = name.trim().ifEmpty { "User" }
+        context.dataStore.edit { it[USER_NAME] = trimmed }
     }
 
     suspend fun setRepeatMode(mode: Int) {
