@@ -42,14 +42,10 @@ fun SettingsScreen(navController: NavController) {
 
     val userName by appContainer.userPreferencesDataStore.userName
         .collectAsStateWithLifecycle(initialValue = "Andrei")
-    val isHighQualityAudio by appContainer.userPreferencesDataStore.isHighQualityAudio
-        .collectAsStateWithLifecycle(initialValue = true)
     val isCrossfadeEnabled by appContainer.userPreferencesDataStore.crossfadeEnabled
         .collectAsStateWithLifecycle(initialValue = true)
     val crossfadeDurationSeconds by appContainer.userPreferencesDataStore.crossfadeDurationSeconds
         .collectAsStateWithLifecycle(initialValue = 3)
-    val isGaplessPlayback by appContainer.userPreferencesDataStore.isGaplessPlayback
-        .collectAsStateWithLifecycle(initialValue = true)
     val isNormalizeVolume by appContainer.userPreferencesDataStore.isNormalizeVolume
         .collectAsStateWithLifecycle(initialValue = false)
 
@@ -68,28 +64,17 @@ fun SettingsScreen(navController: NavController) {
                 .statusBarsPadding(),
             contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
         ) {
-            // Screen Header
+            // Header
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
-                ) {
-                    Text(
-                        text = "Settings",
-                        style = MaterialTheme.typography.displayMedium,
-                        color = TextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Preferences, audio engine, and profile",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
-                    )
-                }
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.displayMedium,
+                    color = TextPrimary,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                )
             }
 
-            // Section 1: Profile & Account
+            // Profile
             item {
                 SettingsSectionHeader(title = "Profile")
             }
@@ -110,10 +95,9 @@ fun SettingsScreen(navController: NavController) {
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // User Avatar with Initial
                         Box(
                             modifier = Modifier
-                                .size(54.dp)
+                                .size(52.dp)
                                 .clip(CircleShape)
                                 .background(AccentPrimary.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
@@ -137,7 +121,7 @@ fun SettingsScreen(navController: NavController) {
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Tap to change display name",
+                                text = "Tap to change name",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TextSecondary
                             )
@@ -168,7 +152,7 @@ fun SettingsScreen(navController: NavController) {
                 }
             }
 
-            // Section 2: Audio & Playback
+            // Audio & Playback
             item {
                 SettingsSectionHeader(title = "Audio & Playback")
             }
@@ -183,8 +167,8 @@ fun SettingsScreen(navController: NavController) {
                         .padding(horizontal = 20.dp, vertical = 4.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        // Equalizer Row
-                        SettingsToggleRowInsideCard(
+                        // Equalizer
+                        SettingsNavRow(
                             customIcon = {
                                 com.example.presentation.component.EqualizerIcon(
                                     tint = AccentPrimary,
@@ -192,28 +176,13 @@ fun SettingsScreen(navController: NavController) {
                                 )
                             },
                             title = "Equalizer",
-                            subtitle = "Adjust audio frequencies & sound profiles",
+                            subtitle = "Adjust audio frequencies & presets",
                             onClick = { showEqualizer = true }
                         )
 
                         SettingsCardDivider()
 
-                        // High Quality Audio Switch
-                        SettingsSwitchRowInsideCard(
-                            icon = Icons.Outlined.Tune,
-                            title = "High Quality Audio",
-                            subtitle = "Stream and playback at highest fidelity",
-                            checked = isHighQualityAudio,
-                            onCheckedChange = { checked ->
-                                coroutineScope.launch {
-                                    appContainer.userPreferencesDataStore.setHighQualityAudio(checked)
-                                }
-                            }
-                        )
-
-                        SettingsCardDivider()
-
-                        // Song Transition (Fade In & Out)
+                        // Song Transition
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -226,31 +195,26 @@ fun SettingsScreen(navController: NavController) {
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
-                                        .background(BgTertiary, RoundedCornerShape(10.dp)),
+                                        .background(BgTertiary, CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Outlined.GraphicEq,
-                                        contentDescription = "Song Transition",
+                                        contentDescription = null,
                                         tint = if (isCrossfadeEnabled) AccentPrimary else TextSecondary,
-                                        modifier = Modifier.size(22.dp)
+                                        modifier = Modifier.size(20.dp)
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "Song Transition (Fade In & Out)",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
+                                        text = "Song Transition (Fade)",
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                         color = TextPrimary
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = if (isCrossfadeEnabled) {
-                                            "${crossfadeDurationSeconds}s transition • Fade out, then fade in"
-                                        } else {
-                                            "Off • Gapless transitions"
-                                        },
+                                        text = if (isCrossfadeEnabled) "${crossfadeDurationSeconds}s fade between tracks" else "Off",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = TextSecondary
                                     )
@@ -264,10 +228,11 @@ fun SettingsScreen(navController: NavController) {
                                         }
                                     },
                                     colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
+                                        checkedThumbColor = TextOnAccent,
                                         checkedTrackColor = AccentPrimary,
-                                        uncheckedThumbColor = TextTertiary,
-                                        uncheckedTrackColor = BgTertiary
+                                        uncheckedThumbColor = TextSecondary,
+                                        uncheckedTrackColor = BgTertiary,
+                                        uncheckedBorderColor = BorderSubtle
                                     )
                                 )
                             }
@@ -283,7 +248,7 @@ fun SettingsScreen(navController: NavController) {
                                         .padding(top = 16.dp)
                                 ) {
                                     HorizontalDivider(
-                                        color = BorderSubtle.copy(alpha = 0.5f),
+                                        color = BorderSubtle.copy(alpha = 0.4f),
                                         thickness = 1.dp
                                     )
                                     Spacer(modifier = Modifier.height(14.dp))
@@ -293,23 +258,17 @@ fun SettingsScreen(navController: NavController) {
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "Transition Duration",
+                                            text = "Fade Duration",
                                             style = MaterialTheme.typography.bodyMedium,
                                             fontWeight = FontWeight.Medium,
                                             color = TextSecondary
                                         )
-                                        Surface(
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = AccentPrimary.copy(alpha = 0.15f)
-                                        ) {
-                                            Text(
-                                                text = "${crossfadeDurationSeconds} seconds",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = AccentPrimary,
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                            )
-                                        }
+                                        Text(
+                                            text = "${crossfadeDurationSeconds}s",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = AccentPrimary
+                                        )
                                     }
 
                                     Spacer(modifier = Modifier.height(8.dp))
@@ -335,7 +294,7 @@ fun SettingsScreen(navController: NavController) {
                                         modifier = Modifier.fillMaxWidth()
                                     )
 
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(6.dp))
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -374,27 +333,11 @@ fun SettingsScreen(navController: NavController) {
 
                         SettingsCardDivider()
 
-                        // Gapless Playback Switch
-                        SettingsSwitchRowInsideCard(
-                            icon = Icons.Outlined.MusicNote,
-                            title = "Gapless Playback",
-                            subtitle = "Seamlessly transition between album tracks",
-                            checked = isGaplessPlayback,
-                            onCheckedChange = { checked ->
-                                coroutineScope.launch {
-                                    appContainer.userPreferencesDataStore.setGaplessPlayback(checked)
-                                    appContainer.audioPlayer.setGaplessPlayback(checked)
-                                }
-                            }
-                        )
-
-                        SettingsCardDivider()
-
-                        // Normalize Volume Switch
-                        SettingsSwitchRowInsideCard(
+                        // Normalize Volume
+                        SettingsSwitchRow(
                             icon = Icons.AutoMirrored.Outlined.VolumeUp,
                             title = "Normalize Volume",
-                            subtitle = "Keep constant loudness across different tracks",
+                            subtitle = "Consistent loudness across songs",
                             checked = isNormalizeVolume,
                             onCheckedChange = { checked ->
                                 coroutineScope.launch {
@@ -407,9 +350,9 @@ fun SettingsScreen(navController: NavController) {
                 }
             }
 
-            // Section 3: Library & Storage (Auto-Scanning + Backup Scan Button)
+            // Library
             item {
-                SettingsSectionHeader(title = "Library & Storage")
+                SettingsSectionHeader(title = "Library")
             }
 
             item {
@@ -421,133 +364,77 @@ fun SettingsScreen(navController: NavController) {
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 4.dp)
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        // Auto-Scan Information Row
-                        Row(
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isScanningMedia) {
+                                coroutineScope.launch {
+                                    isScanningMedia = true
+                                    try {
+                                        android.widget.Toast.makeText(context, "Scanning for songs...", android.widget.Toast.LENGTH_SHORT).show()
+                                        withContext(Dispatchers.IO) {
+                                            appContainer.trackRepository.scanDeviceForTracks()
+                                        }
+                                        android.widget.Toast.makeText(context, "Library scan complete", android.widget.Toast.LENGTH_SHORT).show()
+                                    } catch (e: Exception) {
+                                        android.widget.Toast.makeText(context, "Scan error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                    } finally {
+                                        isScanningMedia = false
+                                    }
+                                }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .size(40.dp)
+                                .background(BgTertiary, CircleShape),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(BgTertiary, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
+                            if (isScanningMedia) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = AccentPrimary
+                                )
+                            } else {
                                 Icon(
-                                    imageVector = Icons.Outlined.AutoAwesome,
-                                    contentDescription = null,
-                                    tint = AccentPrimary,
+                                    imageVector = Icons.Outlined.Refresh,
+                                    contentDescription = "Scan",
+                                    tint = TextPrimary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Automatic Library Sync",
-                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                                    color = TextPrimary
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Songs are automatically detected on startup",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary
-                                )
-                            }
-
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = AccentPrimary.copy(alpha = 0.15f)
-                            ) {
-                                Text(
-                                    text = "Active",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AccentPrimary,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
                         }
 
-                        SettingsCardDivider()
+                        Spacer(modifier = Modifier.width(16.dp))
 
-                        // Manual Backup Scan Row
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = !isScanningMedia) {
-                                    coroutineScope.launch {
-                                        isScanningMedia = true
-                                        try {
-                                            android.widget.Toast.makeText(context, "Scanning device storage for songs...", android.widget.Toast.LENGTH_SHORT).show()
-                                            withContext(Dispatchers.IO) {
-                                                appContainer.trackRepository.scanDeviceForTracks()
-                                            }
-                                            android.widget.Toast.makeText(context, "Library updated successfully", android.widget.Toast.LENGTH_SHORT).show()
-                                        } catch (e: Exception) {
-                                            android.widget.Toast.makeText(context, "Scan failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
-                                        } finally {
-                                            isScanningMedia = false
-                                        }
-                                    }
-                                }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(BgTertiary, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (isScanningMedia) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp,
-                                        color = AccentPrimary
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Refresh,
-                                        contentDescription = "Manual Rescan",
-                                        tint = TextPrimary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Manual Rescan (Backup)",
-                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                                    color = TextPrimary
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = if (isScanningMedia) "Scanning files now..." else "Scan now if newly downloaded files are missing",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary
-                                )
-                            }
-
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                contentDescription = null,
-                                tint = TextTertiary,
-                                modifier = Modifier.size(14.dp)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Scan for songs",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                                color = TextPrimary
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (isScanningMedia) "Scanning files..." else "Search device storage for newly added songs",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
                             )
                         }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                            contentDescription = null,
+                            tint = TextTertiary,
+                            modifier = Modifier.size(14.dp)
+                        )
                     }
                 }
             }
 
-            // Section 4: About & System
+            // About
             item {
                 SettingsSectionHeader(title = "About")
             }
@@ -561,18 +448,41 @@ fun SettingsScreen(navController: NavController) {
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 4.dp)
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        SettingsInfoRow(
-                            icon = Icons.Outlined.Info,
-                            title = "Sonnet Music",
-                            subtitle = "Version 1.0.0 (Sophisticated Dark Edition)"
-                        )
-                        SettingsCardDivider()
-                        SettingsInfoRow(
-                            icon = Icons.Outlined.Storage,
-                            title = "Database Engine",
-                            subtitle = "Room SQLite Local Cache"
-                        )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(BgTertiary, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Info,
+                                contentDescription = null,
+                                tint = TextSecondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Sonnet Music",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                                color = TextPrimary
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Version 1.0.0",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
                     }
                 }
             }
@@ -598,16 +508,10 @@ fun SettingsScreen(navController: NavController) {
                         .padding(24.dp)
                 ) {
                     Text(
-                        text = "Edit Profile Name",
+                        text = "Edit Name",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Enter the name you'd like displayed on the Home screen greeting.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -615,7 +519,7 @@ fun SettingsScreen(navController: NavController) {
                         value = newNameInput,
                         onValueChange = { newNameInput = it },
                         singleLine = true,
-                        placeholder = { Text("Your name", color = TextTertiary) },
+                        placeholder = { Text("Name", color = TextTertiary) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = AccentPrimary,
                             unfocusedBorderColor = BorderSubtle,
@@ -696,7 +600,7 @@ private fun SettingsCardDivider() {
 }
 
 @Composable
-private fun SettingsToggleRowInsideCard(
+private fun SettingsNavRow(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
@@ -754,7 +658,7 @@ private fun SettingsToggleRowInsideCard(
 }
 
 @Composable
-private fun SettingsSwitchRowInsideCard(
+private fun SettingsSwitchRow(
     icon: ImageVector,
     title: String,
     subtitle: String,
@@ -809,49 +713,5 @@ private fun SettingsSwitchRowInsideCard(
                 uncheckedBorderColor = BorderSubtle
             )
         )
-    }
-}
-
-@Composable
-private fun SettingsInfoRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(BgTertiary, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = TextSecondary,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = TextPrimary
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary
-            )
-        }
     }
 }
