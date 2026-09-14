@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,14 +14,21 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -107,22 +115,54 @@ class MainActivity : ComponentActivity() {
                 val appContainer = (applicationContext as SonnetApplication).container
                 val audioPlayer = appContainer.audioPlayer
 
+                val currentTrack by audioPlayer.currentTrack.collectAsStateWithLifecycle()
+                var isNowPlayingOpen by rememberSaveable { mutableStateOf(false) }
+
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
-                val isNowPlaying = currentRoute?.startsWith("now_playing") == true
+                val isNowPlaying = isNowPlayingOpen
                 val showBottomBar = !isNowPlaying && (currentRoute == "home" || currentRoute == "library" || currentRoute == "search" || currentRoute == "settings")
-                val showMiniPlayer = !isNowPlaying
+
+                BackHandler(enabled = isNowPlayingOpen) {
+                    isNowPlayingOpen = false
+                }
+
+                val SnappyDecelerateEasing = remember { CubicBezierEasing(0.0f, 0.0f, 0.2f, 1.0f) }
+                val SnappyAccelerateEasing = remember { CubicBezierEasing(0.4f, 0.0f, 1.0f, 1.0f) }
+
+                val backgroundScale by animateFloatAsState(
+                    targetValue = if (isNowPlayingOpen) 0.96f else 1.0f,
+                    animationSpec = tween(
+                        durationMillis = if (isNowPlayingOpen) 250 else 220,
+                        easing = if (isNowPlayingOpen) SnappyDecelerateEasing else SnappyAccelerateEasing
+                    ),
+                    label = "background_scale"
+                )
+                val scrimAlpha by animateFloatAsState(
+                    targetValue = if (isNowPlayingOpen) 0.45f else 0.0f,
+                    animationSpec = tween(
+                        durationMillis = if (isNowPlayingOpen) 250 else 220,
+                        easing = if (isNowPlayingOpen) SnappyDecelerateEasing else SnappyAccelerateEasing
+                    ),
+                    label = "scrim_alpha"
+                )
 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(BgPrimary)
                 ) {
-                    val EmphasizedDecelerateEasing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
-                    val EmphasizedAccelerateEasing = CubicBezierEasing(0.3f, 0.0f, 0.8f, 0.15f)
-
-                    NavHost(
+                    // Main Navigation Content (subtly scales back with 0-cost GPU matrix transform)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = backgroundScale
+                                scaleY = backgroundScale
+                            }
+                    ) {
+                        NavHost(
                         navController = navController,
                         startDestination = "home",
                         enterTransition = {
@@ -131,21 +171,14 @@ class MainActivity : ComponentActivity() {
                             val isTabSwitch = (initialRoute in listOf("home", "library", "search", "settings")) &&
                                     (targetRoute in listOf("home", "library", "search", "settings"))
 
-                            if (targetRoute.startsWith("now_playing")) {
-                                slideInVertically(
-                                    initialOffsetY = { it },
-                                    animationSpec = tween(440, easing = EmphasizedDecelerateEasing)
-                                ) + fadeIn(animationSpec = tween(260))
-                            } else if (initialRoute.startsWith("now_playing")) {
-                                EnterTransition.None
-                            } else if (isTabSwitch) {
+                            if (isTabSwitch) {
                                 fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
                                         scaleIn(initialScale = 0.98f, animationSpec = tween(220, easing = LinearOutSlowInEasing))
                             } else {
-                                fadeIn(animationSpec = tween(260)) +
+                                fadeIn(animationSpec = tween(220)) +
                                         slideInHorizontally(
                                             initialOffsetX = { (it * 0.25f).toInt() },
-                                            animationSpec = tween(360, easing = EmphasizedDecelerateEasing)
+                                            animationSpec = tween(260, easing = SnappyDecelerateEasing)
                                         )
                             }
                         },
@@ -153,23 +186,16 @@ class MainActivity : ComponentActivity() {
                             val targetRoute = targetState.destination.route ?: ""
                             val initialRoute = initialState.destination.route ?: ""
                             val isTabSwitch = (initialRoute in listOf("home", "library", "search", "settings")) &&
-                                    (targetRoute in listOf("home", "library", "search", "settings"))
+                                     (targetRoute in listOf("home", "library", "search", "settings"))
 
-                            if (targetRoute.startsWith("now_playing")) {
-                                scaleOut(
-                                    targetScale = 0.93f,
-                                    animationSpec = tween(440, easing = EmphasizedDecelerateEasing)
-                                ) + fadeOut(animationSpec = tween(300))
-                            } else if (initialRoute.startsWith("now_playing")) {
-                                ExitTransition.None
-                            } else if (isTabSwitch) {
+                            if (isTabSwitch) {
                                 fadeOut(animationSpec = tween(160, easing = FastOutLinearInEasing)) +
                                         scaleOut(targetScale = 0.98f, animationSpec = tween(160, easing = FastOutLinearInEasing))
                             } else {
-                                fadeOut(animationSpec = tween(200)) +
+                                fadeOut(animationSpec = tween(180)) +
                                         slideOutHorizontally(
                                             targetOffsetX = { -(it * 0.15f).toInt() },
-                                            animationSpec = tween(360, easing = EmphasizedDecelerateEasing)
+                                            animationSpec = tween(260, easing = SnappyDecelerateEasing)
                                         )
                             }
                         },
@@ -177,21 +203,16 @@ class MainActivity : ComponentActivity() {
                             val initialRoute = initialState.destination.route ?: ""
                             val targetRoute = targetState.destination.route ?: ""
                             val isTabSwitch = (initialRoute in listOf("home", "library", "search", "settings")) &&
-                                    (targetRoute in listOf("home", "library", "search", "settings"))
+                                     (targetRoute in listOf("home", "library", "search", "settings"))
 
-                            if (initialRoute.startsWith("now_playing")) {
-                                scaleIn(
-                                    initialScale = 0.93f,
-                                    animationSpec = tween(380, easing = EmphasizedDecelerateEasing)
-                                ) + fadeIn(animationSpec = tween(320))
-                            } else if (isTabSwitch) {
+                            if (isTabSwitch) {
                                 fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
                                         scaleIn(initialScale = 0.98f, animationSpec = tween(220, easing = LinearOutSlowInEasing))
                             } else {
-                                fadeIn(animationSpec = tween(260)) +
+                                fadeIn(animationSpec = tween(220)) +
                                         slideInHorizontally(
                                             initialOffsetX = { -(it * 0.15f).toInt() },
-                                            animationSpec = tween(360, easing = EmphasizedDecelerateEasing)
+                                            animationSpec = tween(260, easing = SnappyDecelerateEasing)
                                         )
                             }
                         },
@@ -199,21 +220,16 @@ class MainActivity : ComponentActivity() {
                             val initialRoute = initialState.destination.route ?: ""
                             val targetRoute = targetState.destination.route ?: ""
                             val isTabSwitch = (initialRoute in listOf("home", "library", "search", "settings")) &&
-                                    (targetRoute in listOf("home", "library", "search", "settings"))
+                                     (targetRoute in listOf("home", "library", "search", "settings"))
 
-                            if (initialRoute.startsWith("now_playing")) {
-                                slideOutVertically(
-                                    targetOffsetY = { it },
-                                    animationSpec = tween(380, easing = EmphasizedAccelerateEasing)
-                                ) + fadeOut(animationSpec = tween(240))
-                            } else if (isTabSwitch) {
+                            if (isTabSwitch) {
                                 fadeOut(animationSpec = tween(160, easing = FastOutLinearInEasing)) +
                                         scaleOut(targetScale = 0.98f, animationSpec = tween(160, easing = FastOutLinearInEasing))
                             } else {
-                                fadeOut(animationSpec = tween(220)) +
+                                fadeOut(animationSpec = tween(180)) +
                                         slideOutHorizontally(
                                             targetOffsetX = { (it * 0.25f).toInt() },
-                                            animationSpec = tween(360, easing = EmphasizedDecelerateEasing)
+                                            animationSpec = tween(260, easing = SnappyDecelerateEasing)
                                         )
                             }
                         }
@@ -223,12 +239,15 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("library") {
                             LibraryScreen(
-                                onTrackClick = { trackId -> navController.navigate("now_playing/$trackId") },
+                                onTrackClick = { isNowPlayingOpen = true },
                                 navController = navController
                             )
                         }
                         composable("search") {
-                            SearchScreen(navController = navController)
+                            SearchScreen(
+                                navController = navController,
+                                onTrackClick = { isNowPlayingOpen = true }
+                            )
                         }
                         composable("settings") {
                             SettingsScreen(navController = navController)
@@ -274,26 +293,30 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(
                             route = "now_playing/{trackId}"
-                        ) { backStackEntry ->
-                            val trackId = backStackEntry.arguments?.getString("trackId")?.toLongOrNull() ?: -1L
-                            NowPlayingScreen(
-                                trackId = trackId,
-                                onBackClick = { navController.popBackStack() }
-                            )
+                        ) {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                                isNowPlayingOpen = true
+                            }
                         }
+                    }
+                    }
+
+                    // Scrim overlay over recessed background
+                    if (scrimAlpha > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { alpha = scrimAlpha }
+                                .background(Color.Black)
+                        )
                     }
 
                     // Bottom UI Overlay (MiniPlayer + NavigationBar)
                     AnimatedVisibility(
                         visible = !isNowPlaying,
-                        enter = slideInVertically(
-                            initialOffsetY = { it },
-                            animationSpec = tween(400, easing = EmphasizedDecelerateEasing)
-                        ) + fadeIn(tween(260)),
-                        exit = slideOutVertically(
-                            targetOffsetY = { it },
-                            animationSpec = tween(340, easing = EmphasizedAccelerateEasing)
-                        ) + fadeOut(tween(200)),
+                        enter = fadeIn(tween(160, delayMillis = 40)),
+                        exit = fadeOut(tween(100)),
                         modifier = Modifier.align(Alignment.BottomCenter)
                     ) {
                         Column(
@@ -301,23 +324,41 @@ class MainActivity : ComponentActivity() {
                         ) {
                             MainMiniPlayer(
                                 audioPlayer = audioPlayer,
-                                navController = navController,
-                                showMiniPlayer = showMiniPlayer
+                                onOpenNowPlaying = { isNowPlayingOpen = true }
                             )
 
                             AnimatedVisibility(
                                 visible = showBottomBar,
-                                enter = slideInVertically(
-                                    initialOffsetY = { it },
-                                    animationSpec = tween(340, easing = EmphasizedDecelerateEasing)
-                                ) + fadeIn(tween(220)),
-                                exit = slideOutVertically(
-                                    targetOffsetY = { it },
-                                    animationSpec = tween(280, easing = EmphasizedAccelerateEasing)
-                                ) + fadeOut(tween(180))
+                                enter = expandVertically(
+                                    animationSpec = tween(220, easing = SnappyDecelerateEasing)
+                                ) + fadeIn(tween(160)),
+                                exit = shrinkVertically(
+                                    animationSpec = tween(180, easing = SnappyAccelerateEasing)
+                                ) + fadeOut(tween(120))
                             ) {
                                 com.example.presentation.component.AppBottomNavigationBar(navController = navController)
                             }
+                        }
+                    }
+
+                    // Fullscreen Now Playing Overlay with drop-down exit animation
+                    AnimatedVisibility(
+                        visible = isNowPlayingOpen && currentTrack != null,
+                        enter = slideInVertically(
+                            initialOffsetY = { fullHeight -> fullHeight },
+                            animationSpec = tween(250, easing = SnappyDecelerateEasing)
+                        ),
+                        exit = slideOutVertically(
+                            targetOffsetY = { fullHeight -> fullHeight },
+                            animationSpec = tween(220, easing = SnappyAccelerateEasing)
+                        ),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        currentTrack?.let { track ->
+                            NowPlayingScreen(
+                                trackId = track.id,
+                                onBackClick = { isNowPlayingOpen = false }
+                            )
                         }
                     }
                 }
@@ -334,36 +375,32 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainMiniPlayer(
     audioPlayer: com.example.player.AudioPlayer,
-    navController: androidx.navigation.NavController,
-    showMiniPlayer: Boolean,
+    onOpenNowPlaying: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val currentTrack by audioPlayer.currentTrack.collectAsStateWithLifecycle()
     val isPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
-    val currentPosition by audioPlayer.currentPosition.collectAsStateWithLifecycle()
 
     val EmphasizedDecelerateEasing = remember { CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f) }
     val EmphasizedAccelerateEasing = remember { CubicBezierEasing(0.3f, 0.0f, 0.8f, 0.15f) }
 
     AnimatedVisibility(
-        visible = showMiniPlayer && currentTrack != null,
+        visible = currentTrack != null,
         modifier = modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-        enter = slideInVertically(
-            initialOffsetY = { it },
-            animationSpec = tween(360, easing = EmphasizedDecelerateEasing)
-        ) + fadeIn(tween(240)),
-        exit = slideOutVertically(
-            targetOffsetY = { it },
-            animationSpec = tween(300, easing = EmphasizedAccelerateEasing)
-        ) + fadeOut(tween(180))
+        enter = expandVertically(
+            animationSpec = tween(280, easing = EmphasizedDecelerateEasing)
+        ) + fadeIn(tween(200)),
+        exit = shrinkVertically(
+            animationSpec = tween(240, easing = EmphasizedAccelerateEasing)
+        ) + fadeOut(tween(160))
     ) {
         currentTrack?.let { track ->
             com.example.presentation.component.MiniPlayer(
                 track = track,
                 isPlaying = isPlaying,
-                currentPosition = currentPosition,
+                positionFlow = audioPlayer.currentPosition,
                 onPlayPauseClick = { audioPlayer.togglePlayPause() },
-                modifier = Modifier.clickable { navController.navigate("now_playing/${track.id}") }
+                modifier = Modifier.clickable { onOpenNowPlaying() }
             )
         }
     }

@@ -5,21 +5,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import com.example.presentation.theme.BorderSubtle
 
+val LocalShimmerAlpha = compositionLocalOf<Float?> { null }
+
 @Composable
-fun SkeletonBox(
-    modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(8.dp)
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+fun ProvideShimmer(content: @Composable () -> Unit) {
+    val infiniteTransition = rememberInfiniteTransition(label = "sharedPulse")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.75f,
@@ -27,8 +27,34 @@ fun SkeletonBox(
             animation = tween(durationMillis = 800, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "pulseAlpha"
+        label = "sharedPulseAlpha"
     )
+    CompositionLocalProvider(LocalShimmerAlpha provides alpha) {
+        content()
+    }
+}
+
+@Composable
+fun SkeletonBox(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(8.dp)
+) {
+    val providedAlpha = LocalShimmerAlpha.current
+    val alpha = if (providedAlpha != null) {
+        providedAlpha
+    } else {
+        val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+        val animatedAlpha by infiniteTransition.animateFloat(
+            initialValue = 0.3f,
+            targetValue = 0.75f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulseAlpha"
+        )
+        animatedAlpha
+    }
 
     Box(
         modifier = modifier
@@ -138,7 +164,7 @@ fun TrackItemSkeleton() {
             SkeletonBox(
                 modifier = Modifier
                     .width(90.dp)
-                    .height(12.dp),
+                .height(12.dp),
                 shape = RoundedCornerShape(4.dp)
             )
         }

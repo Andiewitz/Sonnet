@@ -168,7 +168,7 @@ class EqualizerManager(
         } catch (e: Exception) {
             Log.e("EqualizerManager", "Error toggling equalizer: ${e.message}")
         }
-        persistSettings()
+        persistSettings(immediate = true)
     }
 
     fun selectPreset(preset: EqualizerPreset) {
@@ -179,7 +179,7 @@ class EqualizerManager(
             _bandGains.value = preset.bandGains
         }
         applyAllSettings()
-        persistSettings()
+        persistSettings(immediate = true)
     }
 
     fun setBass(level: Int) {
@@ -272,14 +272,20 @@ class EqualizerManager(
         }
     }
 
-    private fun persistSettings() {
+    private var persistJob: kotlinx.coroutines.Job? = null
+
+    private fun persistSettings(immediate: Boolean = false) {
         val enabled = _isEnabled.value
         val presetName = _currentPreset.value.name
         val bass = _bassLevel.value
         val virtualizer = _virtualizerLevel.value
         val gains = _bandGains.value
 
-        coroutineScope.launch {
+        persistJob?.cancel()
+        persistJob = coroutineScope.launch {
+            if (!immediate) {
+                kotlinx.coroutines.delay(300)
+            }
             try {
                 userPreferencesDataStore.saveEqualizerSettings(
                     enabled = enabled,

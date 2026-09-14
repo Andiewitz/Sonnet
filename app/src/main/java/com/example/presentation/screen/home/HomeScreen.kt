@@ -59,13 +59,14 @@ fun HomeScreen(navController: NavController) {
         containerColor = BgPrimary,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp)
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .statusBarsPadding(),
-            contentPadding = PaddingValues(top = 28.dp, bottom = 100.dp)
-        ) {
+        com.example.presentation.component.ProvideShimmer {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .statusBarsPadding(),
+                contentPadding = PaddingValues(top = 28.dp, bottom = 100.dp)
+            ) {
             item {
                 Row(
                     modifier = Modifier
@@ -122,7 +123,7 @@ fun HomeScreen(navController: NavController) {
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(playlists) { playlist ->
+                        items(playlists, key = { it.id }) { playlist ->
                             PlaylistCard(
                                 playlist = playlist,
                                 modifier = Modifier.animateItem(),
@@ -141,7 +142,7 @@ fun HomeScreen(navController: NavController) {
             }
             if (recentTracks.isEmpty()) {
                 val mockChunks = listOf(listOf(1, 2), listOf(3, 4), listOf(5, 6))
-                items(mockChunks) { chunk ->
+                items(mockChunks, key = { it.first() }) { chunk ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -155,7 +156,7 @@ fun HomeScreen(navController: NavController) {
                 }
             } else {
                 val recentChunks = recentTracks.take(6).chunked(2)
-                items(recentChunks) { chunk ->
+                items(recentChunks, key = { "rec_${it.first().id}_${it.last().id}" }) { chunk ->
                     Row(
                         modifier = Modifier
                             .animateItem()
@@ -186,7 +187,7 @@ fun HomeScreen(navController: NavController) {
                     TrackItemSkeleton()
                 }
             } else {
-                items(mostPlayedTracks.take(10)) { track ->
+                items(mostPlayedTracks.take(10), key = { it.id }) { track ->
                     TrackItem(
                         track = track,
                         modifier = Modifier.animateItem(),
@@ -196,6 +197,7 @@ fun HomeScreen(navController: NavController) {
                 }
             }
             item { Spacer(modifier = Modifier.height(16.dp)) }
+        }
         }
     }
 

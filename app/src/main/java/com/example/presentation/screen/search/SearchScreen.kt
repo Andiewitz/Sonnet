@@ -52,7 +52,10 @@ data class AlbumDisplayItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchScreen(navController: NavController) {
+fun SearchScreen(
+    navController: NavController,
+    onTrackClick: (Track) -> Unit = {}
+) {
     val context = LocalContext.current
     val appContainer = (context.applicationContext as SonnetApplication).container
     val viewModel: SearchViewModel = viewModel(
@@ -64,88 +67,12 @@ fun SearchScreen(navController: NavController) {
     )
 
     val allTracks by viewModel.allTracks.collectAsStateWithLifecycle()
-    val mostPlayedTracks by viewModel.mostPlayedTracks.collectAsStateWithLifecycle()
-    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val allAlbums by viewModel.allAlbums.collectAsStateWithLifecycle()
+    val topAlbums by viewModel.topAlbums.collectAsStateWithLifecycle()
+    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
+    val (filteredTracks, matchedAlbums, matchedArtists) = searchResults
     var trackToAddByDialog by remember { mutableStateOf<Track?>(null) }
-
-    // All available albums grouped from library tracks
-    val allAlbums = remember(allTracks) {
-        allTracks
-            .groupBy { it.album }
-            .map { (albumTitle, tracks) ->
-                Album(
-                    title = albumTitle,
-                    artist = tracks.firstOrNull()?.artist ?: "Unknown Artist",
-                    artworkUri = tracks.firstOrNull { it.albumArtUri != null }?.albumArtUri,
-                    trackCount = tracks.size,
-                    tracks = tracks
-                )
-            }
-            .sortedBy { it.title.lowercase() }
-    }
-
-    // Top albums tracked by user play history (same logic as most popular/played tracks)
-    val topAlbums = remember(allAlbums, mostPlayedTracks) {
-        if (mostPlayedTracks.isNotEmpty()) {
-            val mostPlayedAlbumNames = mostPlayedTracks.map { it.album }
-            val playedCountMap = mostPlayedAlbumNames.groupingBy { it }.eachCount()
-            val playedAlbums = allAlbums
-                .filter { it.title in playedCountMap }
-                .sortedByDescending { playedCountMap[it.title] ?: 0 }
-            
-            if (playedAlbums.size >= 5) {
-                playedAlbums.take(6)
-            } else {
-                // If few played albums, fill with top-track-count albums
-                val remaining = allAlbums
-                    .filter { it !in playedAlbums }
-                    .sortedByDescending { it.trackCount }
-                (playedAlbums + remaining).take(6)
-            }
-        } else {
-            allAlbums.sortedByDescending { it.trackCount }.take(6)
-        }
-    }
-
-    val filteredTracks = remember(allTracks, searchQuery) {
-        if (searchQuery.isBlank()) {
-            emptyList()
-        } else {
-            allTracks.filter {
-                it.title.contains(searchQuery, ignoreCase = true) ||
-                        it.artist.contains(searchQuery, ignoreCase = true) ||
-                        it.album.contains(searchQuery, ignoreCase = true)
-            }
-        }
-    }
-
-    val matchedAlbums = remember(allAlbums, searchQuery) {
-        if (searchQuery.isBlank()) {
-            emptyList()
-        } else {
-            allAlbums.filter { it.title.contains(searchQuery, ignoreCase = true) }
-        }
-    }
-
-    val matchedArtists = remember(allTracks, searchQuery) {
-        if (searchQuery.isBlank()) {
-            emptyList()
-        } else {
-            allTracks
-                .filter { it.artist.contains(searchQuery, ignoreCase = true) }
-                .groupBy { it.artist }
-                .map { (artistName, tracks) ->
-                    val albumsCount = tracks.map { it.album }.distinct().size
-                    Artist(
-                        name = artistName,
-                        trackCount = tracks.size,
-                        albumCount = albumsCount,
-                        artworkUri = tracks.firstOrNull { it.albumArtUri != null }?.albumArtUri,
-                        tracks = tracks
-                    )
-                }
-        }
-    }
 
     Scaffold(
         containerColor = BgPrimary,
@@ -181,7 +108,7 @@ fun SearchScreen(navController: NavController) {
                 ) {
                     TextField(
                         value = searchQuery,
-                        onValueChange = { searchQuery = it },
+                        onValueChange = { viewModel.onSearchQueryChanged(it) },
                         placeholder = {
                             Text(
                                 "Artists, songs or albums",
@@ -196,7 +123,7 @@ fun SearchScreen(navController: NavController) {
                         },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchQuery = "" }) {
+                                IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
                                     Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary)
                                 }
                             }
@@ -271,7 +198,7 @@ fun SearchScreen(navController: NavController) {
                                     contentPadding = PaddingValues(horizontal = 16.dp),
                                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    items(matchedArtists) { artist ->
+                                    items(matchedArtists, key = { "matched_artist_${it.name}_${it.tracks.firstOrNull()?.id}" }) { artist ->
                                         Column(
                                             modifier = Modifier
                                                 .width(96.dp)
@@ -329,7 +256,7 @@ fun SearchScreen(navController: NavController) {
                                     contentPadding = PaddingValues(horizontal = 16.dp),
                                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    items(matchedAlbums) { album ->
+                                    items(matchedAlbums, key = { "matched_album_${it.title}_${it.tracks.firstOrNull()?.id}" }) { album ->
                                         Column(
                                             modifier = Modifier
                                                 .width(110.dp)
@@ -383,7 +310,7 @@ fun SearchScreen(navController: NavController) {
                                         track = track,
                                         onClick = {
                                             viewModel.audioPlayer.setPlaylist(filteredTracks, index)
-                                            navController.navigate("now_playing/${track.id}")
+                                            onTrackClick(track)
                                         },
                                         onMoreClick = {
                                             trackToAddByDialog = track
@@ -439,7 +366,7 @@ fun SearchScreen(navController: NavController) {
                                     contentPadding = PaddingValues(horizontal = 16.dp),
                                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    items(topAlbums, key = { "top_" + it.title }) { album ->
+                                    items(topAlbums, key = { "top_${it.title}_${it.tracks.firstOrNull()?.id}" }) { album ->
                                         TopAlbumItem(
                                             album = album,
                                             onClick = {
@@ -484,7 +411,7 @@ fun SearchScreen(navController: NavController) {
                             )
                         }
                     } else {
-                        itemsIndexed(allAlbums, key = { _, album -> "all_" + album.title }) { index, album ->
+                        itemsIndexed(allAlbums, key = { _, album -> "all_${album.title}_${album.tracks.firstOrNull()?.id}" }) { index, album ->
                             Column {
                                 AlbumRowItem(
                                     album = album,

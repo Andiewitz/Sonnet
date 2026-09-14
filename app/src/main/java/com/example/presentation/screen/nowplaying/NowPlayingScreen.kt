@@ -1,8 +1,6 @@
 package com.example.presentation.screen.nowplaying
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -40,27 +38,26 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.SonnetApplication
 import com.example.presentation.component.AlbumArt
 import com.example.presentation.theme.*
-import kotlin.math.roundToInt
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NowPlayingScreen(
     trackId: Long,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val appContainer = (context.applicationContext as SonnetApplication).container
@@ -69,7 +66,7 @@ fun NowPlayingScreen(
     )
     
     LaunchedEffect(trackId) {
-        if (trackId != -1L) {
+        if (trackId != -1L && viewModel.currentTrack.value?.id != trackId) {
             viewModel.loadTrack(trackId)
         }
     }
@@ -97,118 +94,71 @@ fun NowPlayingScreen(
         label = "bg_color_animation"
     )
 
-    val density = LocalDensity.current
-    val configuration = LocalConfiguration.current
-    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
-    val dismissThresholdPx = with(density) { 130.dp.toPx() }
-    val dragOffsetY = remember { Animatable(0f) }
-    val coroutineScope = rememberCoroutineScope()
-
-    val dynamicCornerRadius by remember {
-        derivedStateOf {
-            val progress = (dragOffsetY.value / dismissThresholdPx).coerceIn(0f, 1f)
-            (progress * 28).dp
-        }
-    }
-    val dynamicScale by remember {
-        derivedStateOf {
-            val progress = (dragOffsetY.value / (dismissThresholdPx * 2f)).coerceIn(0f, 1f)
-            1f - (progress * 0.05f)
-        }
-    }
-
-    val dragDismissModifier = Modifier.pointerInput(Unit) {
-        detectVerticalDragGestures(
-            onDragEnd = {
-                coroutineScope.launch {
-                    if (dragOffsetY.value > dismissThresholdPx) {
-                        dragOffsetY.animateTo(
-                            screenHeightPx,
-                            tween(220, easing = FastOutLinearInEasing)
-                        )
-                        onBackClick()
-                    } else {
-                        dragOffsetY.animateTo(
-                            0f,
-                            spring(
-                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            )
-                        )
-                    }
-                }
-            },
-            onDragCancel = {
-                coroutineScope.launch {
-                    dragOffsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
-                }
-            },
-            onVerticalDrag = { change, dragAmount ->
-                if (dragAmount > 0 || dragOffsetY.value > 0) {
-                    change.consume()
-                    val newOffset = (dragOffsetY.value + dragAmount).coerceAtLeast(0f)
-                    coroutineScope.launch {
-                        dragOffsetY.snapTo(newOffset)
-                    }
-                }
-            }
-        )
-    }
-
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(BgPrimary)
-            .offset { IntOffset(0, dragOffsetY.value.roundToInt().coerceAtLeast(0)) }
-            .graphicsLayer {
-                scaleX = dynamicScale
-                scaleY = dynamicScale
-            }
-            .clip(RoundedCornerShape(topStart = dynamicCornerRadius, topEnd = dynamicCornerRadius))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                        colors = listOf(animatedBgColor, BgPrimary),
-                        startY = 0f,
-                        endY = 1100f
+                .drawBehind {
+                    drawRect(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(animatedBgColor, BgPrimary),
+                            startY = 0f,
+                            endY = 1100f
+                        )
                     )
-                )
+                }
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 8.dp),
+                .padding(horizontal = 24.dp, vertical = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Drag Pill Handle
             Box(
                 modifier = Modifier
-                    .padding(top = 2.dp, bottom = 8.dp)
-                    .width(42.dp)
-                    .height(4.5.dp)
+                    .padding(top = 4.dp, bottom = 6.dp)
+                    .width(36.dp)
+                    .height(4.dp)
                     .clip(CircleShape)
                     .background(TextTertiary.copy(alpha = 0.45f))
-                    .then(dragDismissModifier)
+                    .clickable(onClick = onBackClick)
             )
 
-            // Top Bar
-            Row(
+            // Top Bar with downward swipe to dismiss
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .then(dragDismissModifier),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .height(48.dp)
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            if (dragAmount > 8f) {
+                                onBackClick()
+                            }
+                        }
+                    }
             ) {
-                IconButton(onClick = onBackClick) {
+                IconButton(
+                    onClick = onBackClick,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
                     Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Minimize", tint = TextPrimary)
                 }
                 Text(
                     text = "NOW PLAYING",
                     color = TextSecondary,
-                    style = MaterialTheme.typography.labelSmall
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        letterSpacing = 1.2.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    modifier = Modifier.align(Alignment.Center)
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     IconButton(onClick = { showEqualizer = true }) {
                         com.example.presentation.component.EqualizerIcon(
                             tint = AccentPrimary,
@@ -235,8 +185,7 @@ fun NowPlayingScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
-                    .graphicsLayer(scaleX = artworkScale, scaleY = artworkScale)
-                    .then(dragDismissModifier),
+                    .graphicsLayer(scaleX = artworkScale, scaleY = artworkScale),
                 contentAlignment = Alignment.Center
             ) {
                 val glowColor = remember(track?.id) {
@@ -272,10 +221,15 @@ fun NowPlayingScreen(
 
                 Box(
                     modifier = Modifier
-                        .fillMaxSize(glowPulseScale)
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = glowPulseScale
+                            scaleY = glowPulseScale
+                            alpha = glowAlpha
+                        }
                         .background(
                             brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                colors = listOf(animatedGlowColor.copy(alpha = glowAlpha), Color.Transparent)
+                                colors = listOf(animatedGlowColor, Color.Transparent)
                             ),
                             shape = CircleShape
                         )
@@ -497,9 +451,7 @@ fun NowPlayingProgressBar(
     viewModel: NowPlayingViewModel
 ) {
     val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
-    val playbackFraction by remember(duration, currentPosition) { 
-        derivedStateOf { if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f }
-    }
+    val playbackFraction = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
     
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubFraction by remember { mutableFloatStateOf(0f) }

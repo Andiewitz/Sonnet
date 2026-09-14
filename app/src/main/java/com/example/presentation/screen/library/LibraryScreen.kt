@@ -103,47 +103,9 @@ fun LibraryScreen(
     }
 
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
-    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
-
-    val allPlaylists = remember(tracks, playlists) {
-        listOf(
-            com.example.domain.model.Playlist(
-                id = -1L,
-                name = "All Songs",
-                trackCount = tracks.size,
-                artworkUris = tracks.mapNotNull { it.albumArtUri }.take(4)
-            )
-        ) + playlists
-    }
-
-    val allAlbums = remember(tracks) {
-        tracks.groupBy { it.album }
-            .map { (albumTitle, albumTracks) ->
-                Album(
-                    title = albumTitle,
-                    artist = albumTracks.firstOrNull()?.artist ?: "Unknown Artist",
-                    artworkUri = albumTracks.firstOrNull { it.albumArtUri != null }?.albumArtUri,
-                    trackCount = albumTracks.size,
-                    tracks = albumTracks
-                )
-            }
-            .sortedBy { it.title.lowercase() }
-    }
-
-    val allArtists = remember(tracks) {
-        tracks.groupBy { it.artist }
-            .map { (artistName, artistTracks) ->
-                val albumsCount = artistTracks.map { it.album }.distinct().size
-                Artist(
-                    name = artistName,
-                    trackCount = artistTracks.size,
-                    albumCount = albumsCount,
-                    artworkUri = artistTracks.firstOrNull { it.albumArtUri != null }?.albumArtUri,
-                    tracks = artistTracks
-                )
-            }
-            .sortedBy { it.name.lowercase() }
-    }
+    val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+    val allAlbums by viewModel.allAlbums.collectAsStateWithLifecycle()
+    val allArtists by viewModel.allArtists.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = BgPrimary,
@@ -402,7 +364,7 @@ fun LibraryScreen(
                         }
                     } else if (isGridView) {
                         val chunks = allAlbums.chunked(2)
-                        items(chunks, key = { it.first().title }) { chunk ->
+                        items(chunks, key = { "alb_chunk_${it.first().title}_${it.first().tracks.firstOrNull()?.id}" }) { chunk ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -450,7 +412,7 @@ fun LibraryScreen(
                             }
                         }
                     } else {
-                        items(allAlbums, key = { it.title }) { album ->
+                        items(allAlbums, key = { "alb_${it.title}_${it.tracks.firstOrNull()?.id}" }) { album ->
                             Row(
                                 modifier = Modifier
                                     .animateItem()
@@ -497,7 +459,7 @@ fun LibraryScreen(
                         }
                     } else if (isGridView) {
                         val chunks = allArtists.chunked(2)
-                        items(chunks, key = { it.first().name }) { chunk ->
+                        items(chunks, key = { "art_chunk_${it.first().name}_${it.first().tracks.firstOrNull()?.id}" }) { chunk ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -560,7 +522,7 @@ fun LibraryScreen(
                             }
                         }
                     } else {
-                        items(allArtists, key = { it.name }) { artist ->
+                        items(allArtists, key = { "art_${it.name}_${it.tracks.firstOrNull()?.id}" }) { artist ->
                             Row(
                                 modifier = Modifier
                                     .animateItem()
