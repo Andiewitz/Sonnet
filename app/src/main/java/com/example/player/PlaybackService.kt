@@ -69,11 +69,14 @@ class PlaybackService : MediaSessionService() {
             .setCallback(CustomCallback())
             .build()
 
-        // Configure notification provider to use our channel and app name
+        // Configure notification provider to use our channel, app name, and custom small
+        // icon. Android 13+ throws IllegalArgumentException (Invalid notification, no valid
+        // small icon) if a white vector drawable is not supplied.
         val notificationProvider = DefaultMediaNotificationProvider.Builder(this)
             .setChannelId(NOTIFICATION_CHANNEL_ID)
             .setChannelName(com.example.R.string.playback_channel_name)
             .build()
+            .apply { setSmallIcon(com.example.R.drawable.ic_notification_small) }
         setMediaNotificationProvider(notificationProvider)
 
         appContainer.audioPlayer.onActivePlayerChanged = { newPlayer ->
