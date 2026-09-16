@@ -473,16 +473,10 @@ class AudioPlayer(
             }
         }
 
-        val parsedUri = try {
-            val u = android.net.Uri.parse(track.uri)
-            if (u.scheme.isNullOrBlank()) {
-                android.net.Uri.fromFile(java.io.File(track.uri))
-            } else {
-                u
-            }
-        } catch (e: Exception) {
-            android.net.Uri.parse(track.uri)
-        }
+        // All audio sources are standardized to MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        // content URIs. Raw filesystem paths (/storage/emulated/0/...) are not playable
+        // under scoped storage, so we never fall back to Uri.fromFile.
+        val parsedUri = android.net.Uri.parse(track.uri)
 
         return MediaItem.Builder()
             .setMediaId(track.id.toString())
