@@ -14,6 +14,19 @@ class SonnetApplication : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            android.util.Log.e("SonnetCrash", "FATAL CRASH on thread ${thread.name}: ${throwable.message}", throwable)
+            try {
+                val crashFile = filesDir.resolve("last_crash.txt")
+                crashFile.writeText("Crash on ${java.util.Date()}:\n" + throwable.stackTraceToString())
+            } catch (e: Exception) {
+                // Ignore failure writing crash file
+            }
+            defaultHandler?.uncaughtException(thread, throwable)
+        }
+
         // Access container on Main Thread to eagerly initialize
         container
     }

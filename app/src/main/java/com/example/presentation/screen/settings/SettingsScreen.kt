@@ -237,6 +237,10 @@ fun SettingsScreen(navController: NavController) {
                                 )
                             }
 
+                            var localFadeDuration by remember(crossfadeDurationSeconds) {
+                                mutableFloatStateOf(crossfadeDurationSeconds.toFloat())
+                            }
+
                             AnimatedVisibility(
                                 visible = isCrossfadeEnabled,
                                 enter = fadeIn() + expandVertically(),
@@ -263,25 +267,82 @@ fun SettingsScreen(navController: NavController) {
                                             fontWeight = FontWeight.Medium,
                                             color = TextSecondary
                                         )
-                                        Text(
-                                            text = "${crossfadeDurationSeconds}s",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = AccentPrimary
-                                        )
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            FilledTonalIconButton(
+                                                onClick = {
+                                                    val nextVal = (localFadeDuration.roundToInt() - 1).coerceIn(1, 12)
+                                                    localFadeDuration = nextVal.toFloat()
+                                                    coroutineScope.launch {
+                                                        appContainer.audioPlayer.setCrossfadeDurationSeconds(nextVal)
+                                                        appContainer.userPreferencesDataStore.setCrossfadeDurationSeconds(nextVal)
+                                                    }
+                                                },
+                                                modifier = Modifier.size(32.dp),
+                                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                                    containerColor = BgTertiary,
+                                                    contentColor = TextPrimary
+                                                )
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.Remove,
+                                                    contentDescription = "Decrease",
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+
+                                            Surface(
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = AccentPrimary.copy(alpha = 0.15f),
+                                                modifier = Modifier.padding(horizontal = 8.dp)
+                                            ) {
+                                                Text(
+                                                    text = "${localFadeDuration.roundToInt()}s",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = AccentPrimary,
+                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                                )
+                                            }
+
+                                            FilledTonalIconButton(
+                                                onClick = {
+                                                    val nextVal = (localFadeDuration.roundToInt() + 1).coerceIn(1, 12)
+                                                    localFadeDuration = nextVal.toFloat()
+                                                    coroutineScope.launch {
+                                                        appContainer.audioPlayer.setCrossfadeDurationSeconds(nextVal)
+                                                        appContainer.userPreferencesDataStore.setCrossfadeDurationSeconds(nextVal)
+                                                    }
+                                                },
+                                                modifier = Modifier.size(32.dp),
+                                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                                    containerColor = BgTertiary,
+                                                    contentColor = TextPrimary
+                                                )
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.Add,
+                                                    contentDescription = "Increase",
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
                                     }
 
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(12.dp))
 
                                     Slider(
-                                        value = crossfadeDurationSeconds.toFloat(),
+                                        value = localFadeDuration,
                                         onValueChange = { newValue ->
+                                            localFadeDuration = newValue
                                             val rounded = newValue.roundToInt().coerceIn(1, 12)
-                                            if (rounded != crossfadeDurationSeconds) {
-                                                coroutineScope.launch {
-                                                    appContainer.userPreferencesDataStore.setCrossfadeDurationSeconds(rounded)
-                                                    appContainer.audioPlayer.setCrossfadeDurationSeconds(rounded)
-                                                }
+                                            appContainer.audioPlayer.setCrossfadeDurationSeconds(rounded)
+                                        },
+                                        onValueChangeFinished = {
+                                            val rounded = localFadeDuration.roundToInt().coerceIn(1, 12)
+                                            coroutineScope.launch {
+                                                appContainer.audioPlayer.setCrossfadeDurationSeconds(rounded)
+                                                appContainer.userPreferencesDataStore.setCrossfadeDurationSeconds(rounded)
                                             }
                                         },
                                         valueRange = 1f..12f,
@@ -294,14 +355,14 @@ fun SettingsScreen(navController: NavController) {
                                         modifier = Modifier.fillMaxWidth()
                                     )
 
-                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        listOf(1, 2, 3, 4, 6, 8).forEach { presetSec ->
-                                            val isSelected = crossfadeDurationSeconds == presetSec
+                                        listOf(1, 2, 3, 5, 8, 12).forEach { presetSec ->
+                                            val isSelected = localFadeDuration.roundToInt() == presetSec
                                             Surface(
                                                 shape = RoundedCornerShape(8.dp),
                                                 color = if (isSelected) AccentPrimary else BgTertiary,
@@ -311,9 +372,10 @@ fun SettingsScreen(navController: NavController) {
                                                 ),
                                                 modifier = Modifier
                                                     .clickable {
+                                                        localFadeDuration = presetSec.toFloat()
                                                         coroutineScope.launch {
-                                                            appContainer.userPreferencesDataStore.setCrossfadeDurationSeconds(presetSec)
                                                             appContainer.audioPlayer.setCrossfadeDurationSeconds(presetSec)
+                                                            appContainer.userPreferencesDataStore.setCrossfadeDurationSeconds(presetSec)
                                                         }
                                                     }
                                             ) {

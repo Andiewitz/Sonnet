@@ -52,7 +52,7 @@ class MediaStoreScanner(
                         MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                         id
                     ).toString()
-                    val finalUri = if (data.isNotBlank()) data else contentUri
+                    val finalUri = contentUri
 
                     val albumArtUri = if (albumId > 0) {
                         android.content.ContentUris.withAppendedId(

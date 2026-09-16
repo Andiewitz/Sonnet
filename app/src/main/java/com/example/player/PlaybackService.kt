@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.media3.common.Player
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
@@ -22,6 +24,7 @@ import com.google.common.util.concurrent.ListenableFuture
 
 class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
     companion object {
         const val NOTIFICATION_CHANNEL_ID = "sonnet_playback_channel"
@@ -36,8 +39,16 @@ class PlaybackService : MediaSessionService() {
         val rawPlayer = appContainer.audioPlayer.player
         val player = AlwaysNavigablePlayer(
             player = rawPlayer,
-            onNext = { appContainer.audioPlayer.skipToNext() },
-            onPrevious = { appContainer.audioPlayer.skipToPrevious() }
+            onNext = {
+                mainHandler.post {
+                    appContainer.audioPlayer.skipToNext()
+                }
+            },
+            onPrevious = {
+                mainHandler.post {
+                    appContainer.audioPlayer.skipToPrevious()
+                }
+            }
         )
 
         // PendingIntent to launch/return to the app when notification/media toaster is clicked
@@ -179,13 +190,17 @@ class PlaybackService : MediaSessionService() {
             val appContainer = (application as SonnetApplication).container
             when (customCommand.customAction) {
                 "ACTION_REPEAT" -> {
-                    appContainer.audioPlayer.toggleRepeat()
-                    updateCustomLayout(session)
+                    mainHandler.post {
+                        appContainer.audioPlayer.toggleRepeat()
+                        updateCustomLayout(session)
+                    }
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 "ACTION_SHUFFLE" -> {
-                    appContainer.audioPlayer.toggleShuffle()
-                    updateCustomLayout(session)
+                    mainHandler.post {
+                        appContainer.audioPlayer.toggleShuffle()
+                        updateCustomLayout(session)
+                    }
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
             }
