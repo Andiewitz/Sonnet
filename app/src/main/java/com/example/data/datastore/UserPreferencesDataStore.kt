@@ -57,11 +57,10 @@ class UserPreferencesDataStore(
     val crossfadeDurationSeconds: Flow<Int> = safeDataFlow.map { it[CROSSFADE_DURATION_SECONDS] ?: 4 }
     val userName: Flow<String> = safeDataFlow.map { it[USER_NAME] ?: "Andrei" }
     val repeatMode: Flow<Int> = safeDataFlow.map { prefs ->
-        val saved = prefs[REPEAT_MODE]
-        if (saved == androidx.media3.common.Player.REPEAT_MODE_ONE) {
-            androidx.media3.common.Player.REPEAT_MODE_ONE
-        } else {
-            androidx.media3.common.Player.REPEAT_MODE_ALL
+        when (prefs[REPEAT_MODE]) {
+            androidx.media3.common.Player.REPEAT_MODE_OFF -> androidx.media3.common.Player.REPEAT_MODE_OFF
+            androidx.media3.common.Player.REPEAT_MODE_ONE -> androidx.media3.common.Player.REPEAT_MODE_ONE
+            else -> androidx.media3.common.Player.REPEAT_MODE_ALL
         }
     }
 
@@ -113,10 +112,10 @@ class UserPreferencesDataStore(
     }
 
     suspend fun setRepeatMode(mode: Int) {
-        val sanitizedMode = if (mode == androidx.media3.common.Player.REPEAT_MODE_ONE) {
-            androidx.media3.common.Player.REPEAT_MODE_ONE
-        } else {
-            androidx.media3.common.Player.REPEAT_MODE_ALL
+        val sanitizedMode = when (mode) {
+            androidx.media3.common.Player.REPEAT_MODE_OFF -> androidx.media3.common.Player.REPEAT_MODE_OFF
+            androidx.media3.common.Player.REPEAT_MODE_ONE -> androidx.media3.common.Player.REPEAT_MODE_ONE
+            else -> androidx.media3.common.Player.REPEAT_MODE_ALL
         }
         context.dataStore.edit { it[REPEAT_MODE] = sanitizedMode }
     }
